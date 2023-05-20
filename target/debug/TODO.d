@@ -1,1 +1,0 @@
-/Users/tcron/Projects/todo/target/debug/todo: /Users/tcron/Projects/todo/src/arg_parser.rs /Users/tcron/Projects/todo/src/errors.rs /Users/tcron/Projects/todo/src/formats.rs /Users/tcron/Projects/todo/src/main.rs /Users/tcron/Projects/todo/src/searcher.rs
