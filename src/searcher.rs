@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 
-// use crate::formats;
-use std::fs;
+use crate::formats;
+use crate::ignores_parser::parse_for_ignores;
+use std::collections::HashSet;
+use std::fs::{self, DirEntry};
 use std::io::{self, StdoutLock, Write};
 use std::path::PathBuf;
 
@@ -15,7 +17,8 @@ pub fn search(path: PathBuf, is_dir: bool) -> io::Result<()> {
     let mut handle: StdoutLock = std::io::stdout().lock();
     // search the path for `TODO` and write it out
     if !is_dir {
-        search_file(&mut handle, path, None, &mut false)?;
+        let file_name = get_name_as_string(&path);
+        search_file(&mut handle, path, file_name, None, &mut false)?;
     } else {
         let paths = path.read_dir().unwrap();
         search_dir(&mut handle, get_name_as_string(&path), paths)?;
@@ -32,28 +35,26 @@ fn search_dir(
 ) -> io::Result<()> {
     // if a match is found should you print the dir
     // check if there is a .gitignore or a .ignore file and construct a ignored hashmap if there is
-    let entries: Vec<_> = paths.collect::<Result<Vec<_>, _>>()?;
+    let entries: Vec<DirEntry> = paths.collect::<Result<Vec<_>, _>>()?;
+    let mut ignore_names = HashSet::new();
+    parse_for_ignores(&mut ignore_names, &entries);
 
-    for entry in &entries {
-        let name = entry.file_name();
-        if name == ".gitignore" || name == ".ignore" {
-            // before this is done create a list to hold the ignores,
-            // give a reference to the function
-            println!("found");
-        }
-    }
     let mut print_dir = true;
     for entry in entries {
         let path_buf = entry.path();
         let read_dir = path_buf.read_dir();
+        let name: String = get_name_as_string(&path_buf);
+        if ignore_names.contains(&name) {
+            continue;
+        }
         match read_dir {
             Ok(read) => {
                 // is a directory
-                search_dir(stream, get_name_as_string(&path_buf), read)?;
+                search_dir(stream, name, read)?;
             }
             Err(_) => {
                 // is a file, print_dir is changed when the dir has been printed once
-                search_file(stream, path_buf, Some(&dir_name), &mut print_dir)?;
+                search_file(stream, path_buf, name, Some(&dir_name), &mut print_dir)?;
             }
         }
     }
@@ -64,11 +65,12 @@ fn search_dir(
 fn search_file(
     stream: &mut StdoutLock,
     path: PathBuf,
+    file_name: String,
     dir_name: Option<&String>,
     print_dir: &mut bool,
 ) -> io::Result<()> {
-    let file_name = get_name_as_string(&path);
     let contents: Vec<u8> = fs::read(path).expect("Failed to read file");
+    // if a non text file than just return
     if !contents.is_ascii() {
         return Ok(());
     }
