@@ -2,7 +2,7 @@
 
 // use crate::formats;
 use std::fs;
-use std::io::{self, BufWriter, Write};
+use std::io::{self, StdoutLock, Write};
 use std::path::PathBuf;
 
 // TODO add other denoters that are used, HACK,
@@ -12,21 +12,21 @@ const TODO_BYTES: [u8; 4] = [b'T', b'O', b'D', b'O'];
 // need some clever way to keep track of each directories gitignore
 // files and directories can be ignored
 pub fn search(path: PathBuf, is_dir: bool) -> io::Result<()> {
-    let mut stream: BufWriter<io::Stdout> = BufWriter::new(io::stdout());
+    let mut handle: StdoutLock = std::io::stdout().lock();
     // search the path for `TODO` and write it out
     if !is_dir {
-        search_file(&mut stream, path, None, &mut false)?;
+        search_file(&mut handle, path, None, &mut false)?;
     } else {
         let paths = path.read_dir().unwrap();
-        search_dir(&mut stream, get_name_as_string(&path), paths)?;
+        search_dir(&mut handle, get_name_as_string(&path), paths)?;
     }
-    stream.flush().unwrap();
+    handle.flush()?;
 
     Ok(())
 }
 
 fn search_dir(
-    stream: &mut BufWriter<io::Stdout>,
+    stream: &mut StdoutLock,
     dir_name: String,
     paths: std::fs::ReadDir,
 ) -> io::Result<()> {
@@ -37,6 +37,8 @@ fn search_dir(
     for entry in &entries {
         let name = entry.file_name();
         if name == ".gitignore" || name == ".ignore" {
+            // before this is done create a list to hold the ignores,
+            // give a reference to the function
             println!("found");
         }
     }
@@ -60,7 +62,7 @@ fn search_dir(
 }
 
 fn search_file(
-    stream: &mut BufWriter<io::Stdout>,
+    stream: &mut StdoutLock,
     path: PathBuf,
     dir_name: Option<&String>,
     print_dir: &mut bool,
@@ -123,15 +125,15 @@ fn line_contains_bytes(line: &[u8]) -> bool {
     false
 }
 
-fn write_dir_name(stream: &mut BufWriter<io::Stdout>, name: &String) -> io::Result<()> {
+fn write_dir_name(stream: &mut StdoutLock, name: &String) -> io::Result<()> {
     write!(stream, "Dir: {}\n\n", name)
 }
 
-fn write_file_name(stream: &mut BufWriter<io::Stdout>, name: &String) -> io::Result<()> {
+fn write_file_name(stream: &mut StdoutLock, name: &String) -> io::Result<()> {
     write!(stream, "{}\n", name)
 }
 
-fn write_matched_line(stream: &mut BufWriter<io::Stdout>, line: &str) -> io::Result<()> {
+fn write_matched_line(stream: &mut StdoutLock, line: &str) -> io::Result<()> {
     // TODO remove all the blank characters at the beginning
     write!(stream, "{}\n", line)
 }
