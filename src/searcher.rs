@@ -23,20 +23,20 @@ use std::rc::Rc;
 // parent
 // type DirWeakPointer = Weak<RefCell<Directory>>;
 // children
-type DirPointer<'a> = Rc<RefCell<Directory<'a>>>;
+type DirPointer = Rc<RefCell<Directory>>;
 
-struct Directory<'a> {
-    parent: Option<&'a DirPointer<'a>>,
+struct Directory {
+    parent: Option<DirPointer>,
     // the directories that have a
-    children: Vec<DirPointer<'a>>,
-    found_files: Vec<File<'a>>,
+    children: Vec<DirPointer>,
+    found_files: Vec<File>,
     name: String,
     to_add: bool,
 }
 
-struct File<'a> {
+struct File {
     name: String,
-    lines: Vec<&'a str>,
+    lines: Vec<String>,
 }
 
 // TODO add other denoters that are used, HACK, FIXME
@@ -91,7 +91,7 @@ fn search_dir(mut d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result
                 let child_dir = Directory {
                     // parent: Option<Weak<RefCell<Directory<'a>>>>,
                     // children: Vec<Rc<RefCell<Directory<'a>>>>,
-                    parent: Some(&d_ref),
+                    parent: Some(d_ref.clone()),
                     children: Vec::new(),
                     found_files: Vec::new(),
                     to_add: true,
@@ -99,12 +99,12 @@ fn search_dir(mut d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result
                 };
                 // dir.children.push(Rc::new(RefCell::new(child_dir)));
                 let cd_ref = Rc::new(RefCell::new(child_dir));
-                d_ref.borrow().children.push(cd_ref);
+                d_ref.borrow_mut().children.push(cd_ref.clone());
                 search_dir(cd_ref, read);
             }
             Err(_) => {
                 // is a file, print_dir is changed when the dir has been printed once
-                search_file(path_buf, name, Some(d_ref));
+                search_file(path_buf, name, Some(d_ref.clone()));
             }
         }
     }
@@ -130,7 +130,7 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
                 // add all the parents to the founds until one was added
                 let line =
                     std::str::from_utf8(&contents[line_start..i]).expect("Failed to decode line");
-                file.lines.push(line.trim());
+                file.lines.push(line.trim().to_string());
             }
             // the start of the next line is the char after the \n
             line_start = i + 1;
@@ -140,7 +140,7 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
     if line_start < contents.len() {
         if line_contains_bytes(&contents[line_start..]) {
             let line = std::str::from_utf8(&contents[line_start..]).expect("Failed to decode line");
-            file.lines.push(line.trim());
+            file.lines.push(line.trim().to_string());
         }
     }
 
@@ -149,12 +149,12 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
         // can assume founds exists when directory exists
         if let Some(mut d_ref) = directory.take() {
             // d_ref.borrow().children.push(cd_ref);
-            let mut dir = d_ref.get_mut();
-            dir.found_files.push(file);
+            d_ref.borrow_mut().found_files.push(file);
             // while has a parent and it is still not in the current found tree
-            while dir.parent.is_some() && dir.to_add {
-                dir.to_add = false;
-                dir = dir.parent.unwrap().get_mut();
+            while d_ref.borrow().parent.is_some() && d_ref.borrow().to_add {
+                d_ref.borrow_mut().to_add = false;
+                let new_d_ref = d_ref.borrow().parent.clone().unwrap();
+                d_ref = new_d_ref;
                 // let new_current = current.borrow().parent.as_ref().unwrap().uprade().unwrap();
             }
             // push the most parent directory into it
