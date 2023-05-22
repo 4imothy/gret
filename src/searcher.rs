@@ -149,11 +149,12 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
         // can assume founds exists when directory exists
         if let Some(mut d_ref) = directory.take() {
             // d_ref.borrow().children.push(cd_ref);
-            d_ref.borrow().found_files.push(file);
+            let mut dir = d_ref.get_mut();
+            dir.found_files.push(file);
             // while has a parent and it is still not in the current found tree
-            while d_ref.borrow().parent.is_some() && d_ref.borrow().to_add {
-                d_ref.borrow().to_add = false;
-                d_ref = *d_ref.borrow().parent.unwrap();
+            while dir.parent.is_some() && dir.to_add {
+                dir.to_add = false;
+                dir = dir.parent.unwrap().get_mut();
                 // let new_current = current.borrow().parent.as_ref().unwrap().uprade().unwrap();
             }
             // push the most parent directory into it
