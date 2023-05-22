@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
-use crate::formats;
 use crate::ignores_parser::parse_for_ignores;
+use crate::printer::print_directory;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fs::{self, DirEntry};
@@ -23,20 +23,20 @@ use std::rc::Rc;
 // parent
 // type DirWeakPointer = Weak<RefCell<Directory>>;
 // children
-type DirPointer = Rc<RefCell<Directory>>;
+pub type DirPointer = Rc<RefCell<Directory>>;
 
-struct Directory {
-    parent: Option<DirPointer>,
+pub struct Directory {
+    pub parent: Option<DirPointer>,
     // the directories that have a
-    children: Vec<DirPointer>,
-    found_files: Vec<File>,
-    name: String,
-    to_add: bool,
+    pub children: Vec<DirPointer>,
+    pub found_files: Vec<File>,
+    pub name: String,
+    pub to_add: bool,
 }
 
-struct File {
-    name: String,
-    lines: Vec<String>,
+pub struct File {
+    pub name: String,
+    pub lines: Vec<String>,
 }
 
 // TODO add other denoters that are used, HACK, FIXME
@@ -63,7 +63,8 @@ pub fn search(path: PathBuf, is_dir: bool) -> std::io::Result<()> {
             name,
         };
         let td_ref = Rc::new(RefCell::new(top_dir));
-        search_dir(td_ref, paths);
+        search_dir(td_ref.clone(), paths)?;
+        print_directory(td_ref, 0);
     }
 
     Ok(())
