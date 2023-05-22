@@ -4,6 +4,7 @@ mod arg_parser;
 mod errors;
 mod formats;
 mod ignores_parser;
+mod printer;
 mod searcher;
 use arg_parser::parse_args;
 
