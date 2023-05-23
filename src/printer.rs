@@ -6,7 +6,7 @@ pub fn print_directory(dir_ptr: DirPointer, depth: usize) {
 
     // let new_d_ref = d_ref.borrow().parent.clone().unwrap();
     // d_ref = new_d_ref
-    for _ in 0..depth {
+    for _ in 0..depth * 2 {
         print!(" ");
     }
     println!("Dir: {}", dir.name);
@@ -20,12 +20,12 @@ pub fn print_directory(dir_ptr: DirPointer, depth: usize) {
 }
 
 pub fn print_file(file: &File, depth: usize) {
-    for _ in 0..depth {
+    for _ in 0..depth * 2 {
         print!(" ");
     }
     println!("File: {}", file.name);
     for line in &file.lines {
-        for _ in 0..depth {
+        for _ in 0..depth * 2 {
             print!(" ");
         }
         print!(" ");
