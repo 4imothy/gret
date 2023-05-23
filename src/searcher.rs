@@ -7,32 +7,21 @@ use std::fs::{self, DirEntry};
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
-// TODO replace all the Vec::new with options, not every dir has a found file
-// TODO better description of file
-
-// Write a read_single_file that returns a file type to be printed
 /*
-valid comment
+To read for the TODOs, we read each entry of a directory. If the entry
+is a directory, we seacrh it. After done with the children we come back
+and finish the search on this directory. When a file is encountered
+with the phrase TODO we add the file to the directories list of files.
+Then we chain up the parents of this directory to add them to the children
+of the earliest directory that was already added as a child to it's parent.
 */
-// Need to search a directory fully, when I find a child directory search that one
-// fully as well when a file is found then search it, if that file has the target
-// phrase then in the directory it is in add this file to the list of matches
-// and trail up the parents till you can add to the highest up directory that is not
-// yet in the found tree.
 
-// To do this need to pass a mutable dir to each search of a directory as it needs children added
-// to it. Each directory also passed to its file's searches needs to be mutable so we can keep track of
-// whether it has been added to the found tree and so its list of matched files can be updated..
-
-// parent
-// type DirWeakPointer = Weak<RefCell<Directory>>;
-// children
 pub type DirPointer = Rc<RefCell<Directory>>;
 pub type WeakDirPointer = Weak<RefCell<Directory>>;
 
 pub struct Directory {
     pub parent: Option<WeakDirPointer>,
-    // the directories that have a
+    // the directories that have a matched file
     pub children: Vec<DirPointer>,
     pub found_files: Vec<File>,
     pub name: String,
@@ -54,6 +43,7 @@ const TODO_BYTES: [u8; 4] = [b'T', b'O', b'D', b'O'];
 pub fn search_singe_file(path: PathBuf) -> Option<File> {
     let name = get_name_as_string(&path);
     let mut file = File {
+        // this does not allocate memory
         lines: Vec::new(),
         name,
     };
@@ -83,6 +73,7 @@ pub fn start_search_dir(path: PathBuf) -> std::io::Result<DirPointer> {
     let paths = path.read_dir().unwrap();
     let name = get_name_as_string(&path);
     let top_dir = Directory {
+        // this doesn't allocate memory
         found_files: Vec::new(),
         children: Vec::new(),
         parent: None,
@@ -108,7 +99,6 @@ fn search_dir(d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()>
         let name: String = get_name_as_string(&path_buf);
         if ignore_names.contains(&name) {
             // skip if this name is in the gitignore
-            // TODO make this work with ignores for files that are deep, a/b/t.txt
             continue;
         }
         match read_dir {
@@ -123,9 +113,8 @@ fn search_dir(d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()>
                     to_add: true,
                     name,
                 };
-                // dir.children.push(Rc::new(RefCell::new(child_dir)));
                 let cd_ref = Rc::new(RefCell::new(child_dir));
-                d_ref.borrow_mut().children.push(cd_ref.clone());
+                // d_ref.borrow_mut().children.push(cd_ref.clone());
                 search_dir(cd_ref, read)?;
             }
             Err(_) => {
@@ -156,17 +145,15 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
     if file.lines.len() > 0 {
         // can assume founds exists when directory exists
         if let Some(mut d_ref) = directory.take() {
-            // d_ref.borrow().children.push(cd_ref);
             d_ref.borrow_mut().found_files.push(file);
             // while has a parent and it is still not in the current found tree
             while d_ref.borrow().parent.is_some() && d_ref.borrow().to_add {
                 d_ref.borrow_mut().to_add = false;
-                let new_d_ref = d_ref.borrow().parent.clone().unwrap();
-                d_ref = new_d_ref.upgrade().unwrap();
+                let new_d_ref = d_ref.borrow().parent.clone().unwrap().upgrade().unwrap();
+                new_d_ref.borrow_mut().children.push(d_ref);
+                d_ref = new_d_ref;
                 // let new_current = current.borrow().parent.as_ref().unwrap().uprade().unwrap();
             }
-            // push the most parent directory into it
-            // then when printing trail down the children
         }
     }
 }
