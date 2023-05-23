@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-use crate::ignores_parser::parse_for_ignores;
+use crate::ignores_parser::{check_match, parse_for_ignores};
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fs::{self, DirEntry};
@@ -81,25 +81,31 @@ pub fn start_search_dir(path: PathBuf) -> std::io::Result<DirPointer> {
         name,
     };
     let td_ref = Rc::new(RefCell::new(top_dir));
-    search_dir(td_ref.clone(), paths)?;
+    let mut ignore_names = HashSet::new();
+    search_dir(td_ref.clone(), paths, &mut ignore_names)?;
 
     Ok(td_ref)
 }
 
-fn search_dir(d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()> {
+fn search_dir(
+    d_ref: DirPointer,
+    paths: std::fs::ReadDir,
+    ignore_names: &mut HashSet<PathBuf>,
+) -> std::io::Result<()> {
     // if a match is found should you print the dir
     // check if there is a .gitignore or a .ignore file and construct a ignored hashmap if there is
     let entries: Vec<DirEntry> = paths.collect::<Result<Vec<_>, _>>()?;
-    let mut ignore_names = HashSet::new();
     // TODO do as stated in .ignore, pass a HashSet from parent down
-    parse_for_ignores(&mut ignore_names, &entries);
+    parse_for_ignores(ignore_names, &entries);
 
     for entry in entries {
-        let path_buf = entry.path();
+        let path_buf: PathBuf = entry.path();
         let read_dir = path_buf.read_dir();
         let name: String = get_name_as_string(&path_buf);
-        if ignore_names.contains(&name) {
-            // skip if this name is in the gitignore
+        if check_match(
+            &ignore_names,
+            &path_buf.canonicalize().expect("Unable to canocalize path"),
+        ) {
             continue;
         }
         match read_dir {
@@ -116,7 +122,7 @@ fn search_dir(d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()>
                 };
                 let cd_ref = Rc::new(RefCell::new(child_dir));
                 // d_ref.borrow_mut().children.push(cd_ref.clone());
-                search_dir(cd_ref, read)?;
+                search_dir(cd_ref, read, ignore_names)?;
             }
             Err(_) => {
                 // is a file, print_dir is changed when the dir has been printed once
