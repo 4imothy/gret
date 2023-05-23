@@ -105,7 +105,7 @@ fn search_dir(
             })?;
     // this parses through the entries completely
     // need to check the ignorers before anything else
-    parse_for_ignores(ignore_names, &entries);
+    parse_for_ignores(ignore_names, &entries)?;
 
     for entry in entries {
         let path_buf: PathBuf = entry.path();
