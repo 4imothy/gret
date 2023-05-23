@@ -2,12 +2,13 @@ use crate::formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
 use crate::searcher::DirPointer;
 use crate::searcher::Directory;
 use crate::searcher::File;
+use crate::Errors;
 use std::io::{self, Write};
 
-pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> io::Result<()> {
+pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> Result<(), Errors> {
     let prefix = "".to_string();
     let dir = dir_ptr.borrow();
-    writeln!(out, "{}", dir.name)?;
+    writeln!(out, "{}", dir.name).map_err(|_| Errors::CantWrite)?;
 
     handle_descendants(out, dir, prefix)?;
 
@@ -18,7 +19,7 @@ fn handle_descendants(
     out: &mut io::StdoutLock,
     dir: std::cell::Ref<'_, Directory>,
     prefix: String,
-) -> io::Result<()> {
+) -> Result<(), Errors> {
     let files = &dir.found_files;
     let children = dir.children.clone();
     let mut i: usize = 0;
@@ -51,14 +52,15 @@ fn print_directory(
     dir_ptr: DirPointer,
     mut prefix: String,
     parent_has_next: bool,
-) -> io::Result<()> {
+) -> Result<(), Errors> {
     let dir = dir_ptr.borrow();
 
     if parent_has_next {
-        writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, dir.name)?;
+        writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, dir.name)
+            .map_err(|_| Errors::CantWrite)?;
         prefix += VER_LINE_SPACER;
     } else {
-        writeln!(out, "{}{}{}", prefix, BRANCH_END, dir.name)?;
+        writeln!(out, "{}{}{}", prefix, BRANCH_END, dir.name).map_err(|_| Errors::CantWrite)?;
         prefix += SPACER;
     }
 
@@ -72,12 +74,13 @@ fn print_file(
     file: &File,
     mut prefix: String,
     parent_has_next: bool,
-) -> io::Result<()> {
+) -> Result<(), Errors> {
     if parent_has_next {
-        writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, file.name)?;
+        writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, file.name)
+            .map_err(|_| Errors::CantWrite)?;
         prefix += VER_LINE_SPACER;
     } else {
-        writeln!(out, "{}{}{}", prefix, BRANCH_END, file.name)?;
+        writeln!(out, "{}{}{}", prefix, BRANCH_END, file.name).map_err(|_| Errors::CantWrite)?;
         prefix += SPACER;
     }
 
@@ -86,28 +89,28 @@ fn print_file(
     for line in &file.lines {
         i += 1;
         if i != len {
-            writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, line)?;
+            writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, line)
+                .map_err(|_| Errors::CantWrite)?;
         } else {
-            writeln!(out, "{}{}{}", prefix, BRANCH_END, line)?;
+            writeln!(out, "{}{}{}", prefix, BRANCH_END, line).map_err(|_| Errors::CantWrite)?;
         }
     }
 
     Ok(())
 }
 
-pub fn print_single_file(out: &mut io::StdoutLock, file: &File) -> io::Result<()> {
-    writeln!(out, "{}", file.name)?;
+pub fn print_single_file(out: &mut io::StdoutLock, file: &File) -> Result<(), Errors> {
+    writeln!(out, "{}", file.name).map_err(|_| Errors::CantWrite)?;
 
     let len = file.lines.len();
     let mut i = 0;
     for line in &file.lines {
         i += 1;
         if i != len {
-            writeln!(out, "{}{}", BRANCH_HAS_NEXT, line)?;
+            writeln!(out, "{}{}", BRANCH_HAS_NEXT, line).map_err(|_| Errors::CantWrite)?;
         } else {
-            writeln!(out, "{}{}", BRANCH_END, line)?;
+            writeln!(out, "{}{}", BRANCH_END, line).map_err(|_| Errors::CantWrite)?;
         }
     }
-
     Ok(())
 }

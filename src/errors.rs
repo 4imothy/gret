@@ -6,7 +6,11 @@ use std::path::PathBuf;
 
 pub enum Errors {
     PathNotFound { cause: PathBuf },
+    CantCanonicalize { cause: PathBuf },
+    CantWrite,
+    CantCollect { cause: String },
     UnknownArgument { cause: String },
+    UnableToReadDir { cause: PathBuf },
 }
 
 fn error_prefix() -> String {
@@ -31,7 +35,23 @@ impl fmt::Display for Errors {
                 )
             }
             Errors::UnknownArgument { cause } => {
-                write!(f, "{}Unknown Argument, {}", error_prefix, cause,)
+                write!(f, "{}Unknown Argument, {}", error_prefix, cause)
+            }
+            Errors::CantWrite => {
+                write!(f, "{}Can't print to Stdout", error_prefix)
+            }
+            Errors::CantCanonicalize { cause } => {
+                write!(
+                    f,
+                    "{}Cannot get the absolute path of: {:?}",
+                    error_prefix, cause
+                )
+            }
+            Errors::CantCollect { cause } => {
+                write!(f, "{}Can't collect items of type: {}", error_prefix, cause)
+            }
+            Errors::UnableToReadDir { cause } => {
+                write!(f, "{}Unable to read directory: {:?}", error_prefix, cause)
             }
         }
     }

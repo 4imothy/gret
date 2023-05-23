@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
+use crate::errors::Errors;
 use crate::ignores_parser::{check_match, parse_for_ignores};
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -67,11 +68,13 @@ fn is_text(contents: &Vec<u8>) -> bool {
     };
 }
 
-pub fn start_search_dir(path: PathBuf) -> std::io::Result<DirPointer> {
+pub fn start_search_dir(path: PathBuf) -> Result<DirPointer, Errors> {
     // to store the number of spaces before a dir, file, line
     // search the path for `TODO` and write it out
-    let paths = path.read_dir().unwrap();
     let name = get_name_as_string(&path);
+    let paths: std::fs::ReadDir = path
+        .read_dir()
+        .map_err(|_| Errors::UnableToReadDir { cause: path })?;
     let top_dir = Directory {
         // this doesn't allocate memory
         found_files: Vec::new(),
@@ -91,16 +94,21 @@ fn search_dir(
     d_ref: DirPointer,
     paths: std::fs::ReadDir,
     ignore_names: &mut HashSet<PathBuf>,
-) -> std::io::Result<()> {
+) -> Result<(), Errors> {
     // if a match is found should you print the dir
     // check if there is a .gitignore or a .ignore file and construct a ignored hashmap if there is
-    let entries: Vec<DirEntry> = paths.collect::<Result<Vec<_>, _>>()?;
-    // TODO do as stated in .ignore, pass a HashSet from parent down
+    let entries: Vec<DirEntry> =
+        paths
+            .collect::<Result<_, _>>()
+            .map_err(|_| Errors::CantCollect {
+                cause: "DirEntry".to_string(),
+            })?;
+    // this parses through the entries completely
+    // need to check the ignorers before anything else
     parse_for_ignores(ignore_names, &entries);
 
     for entry in entries {
         let path_buf: PathBuf = entry.path();
-        let read_dir = path_buf.read_dir();
         let name: String = get_name_as_string(&path_buf);
         if check_match(
             &ignore_names,
@@ -108,26 +116,24 @@ fn search_dir(
         ) {
             continue;
         }
-        match read_dir {
-            Ok(read) => {
-                // is a directory
-                let child_dir = Directory {
-                    // parent: Option<Weak<RefCell<Directory<'a>>>>,
-                    // children: Vec<Rc<RefCell<Directory<'a>>>>,
-                    parent: Some(Rc::downgrade(&d_ref)),
-                    children: Vec::new(),
-                    found_files: Vec::new(),
-                    to_add: true,
-                    name,
-                };
-                let cd_ref = Rc::new(RefCell::new(child_dir));
-                // d_ref.borrow_mut().children.push(cd_ref.clone());
-                search_dir(cd_ref, read, ignore_names)?;
-            }
-            Err(_) => {
-                // is a file, print_dir is changed when the dir has been printed once
-                search_file(path_buf, name, Some(d_ref.clone()));
-            }
+        if path_buf.is_dir() {
+            // is a directory
+            // unable to read dir new error
+            let read_dir = path_buf
+                .read_dir()
+                .map_err(|_| Errors::UnableToReadDir { cause: path_buf })?;
+            let child_dir = Directory {
+                parent: Some(Rc::downgrade(&d_ref)),
+                children: Vec::new(),
+                found_files: Vec::new(),
+                to_add: true,
+                name,
+            };
+            let cd_ref = Rc::new(RefCell::new(child_dir));
+            search_dir(cd_ref, read_dir, ignore_names)?;
+        } else {
+            // is a file, print_dir is changed when the dir has been printed once
+            search_file(path_buf, name, Some(d_ref.clone()));
         }
     }
 
@@ -159,7 +165,6 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
                 let new_d_ref = d_ref.borrow().parent.clone().unwrap().upgrade().unwrap();
                 new_d_ref.borrow_mut().children.push(d_ref);
                 d_ref = new_d_ref;
-                // let new_current = current.borrow().parent.as_ref().unwrap().uprade().unwrap();
             }
         }
     }
