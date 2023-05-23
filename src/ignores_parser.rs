@@ -3,13 +3,16 @@
 use std::collections::HashSet;
 use std::fs::{DirEntry, File};
 use std::io::{self, BufRead};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 // parse .gitignores and .ignore files to ignore the files/directories in them
-fn parse_ignore_file(names: &mut HashSet<String>, path: &DirEntry) {
+fn parse_ignore_file(names: &mut HashSet<PathBuf>, path: &DirEntry, comment: &str) {
     // read the file contents
     if let Ok(lines) = read_lines(path.path()) {
         for line in lines {
-            names.insert(line.unwrap());
+            let l = line.unwrap();
+            if !l.starts_with(comment) {
+                names.insert(PathBuf::from(l).canonicalize().unwrap());
+            }
         }
     }
 }
@@ -22,15 +25,24 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-pub fn parse_for_ignores(names: &mut HashSet<String>, entries: &Vec<DirEntry>) {
+pub fn parse_for_ignores(paths: &mut HashSet<PathBuf>, entries: &Vec<DirEntry>) {
     for entry in entries {
         let name = entry.file_name();
         if name == ".gitignore" {
-            names.insert(".git".to_string());
-            parse_ignore_file(names, entry);
+            paths.insert(PathBuf::from(".git").canonicalize().unwrap());
+            let comment = "#";
+            parse_ignore_file(paths, entry, comment);
         }
         if name == ".ignore" {
-            parse_ignore_file(names, entry);
+            let comment = "//";
+            parse_ignore_file(paths, entry, comment);
         }
     }
+}
+
+pub fn check_match(hs: &HashSet<PathBuf>, check: &PathBuf) -> bool {
+    if hs.contains(check) {
+        return true;
+    }
+    return false;
 }
