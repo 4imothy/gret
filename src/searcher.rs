@@ -5,11 +5,11 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fs::{self, DirEntry};
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 // TODO replace all the Vec::new with options, not every dir has a found file
-
 // TODO better description of file
+
 // Write a read_single_file that returns a file type to be printed
 /*
 valid comment
@@ -28,9 +28,10 @@ valid comment
 // type DirWeakPointer = Weak<RefCell<Directory>>;
 // children
 pub type DirPointer = Rc<RefCell<Directory>>;
+pub type WeakDirPointer = Weak<RefCell<Directory>>;
 
 pub struct Directory {
-    pub parent: Option<DirPointer>,
+    pub parent: Option<WeakDirPointer>,
     // the directories that have a
     pub children: Vec<DirPointer>,
     pub found_files: Vec<File>,
@@ -43,7 +44,7 @@ pub struct File {
     pub lines: Vec<String>,
 }
 
-// TODO add other denoters that are used, HACK, FIXME
+// TODO add other denoters that are used, HACK, FIXME, TODO
 const TODO_BYTES: [u8; 4] = [b'T', b'O', b'D', b'O'];
 
 // since the children directories can also have .gitignores
@@ -57,6 +58,7 @@ pub fn search_singe_file(path: PathBuf) -> Option<File> {
         name,
     };
     let contents: Vec<u8> = fs::read(path).expect("Failed to read file");
+
     // if a non text file than just return
     // TODO make this call more effecient
     if !is_text(&contents) {
@@ -115,7 +117,7 @@ fn search_dir(d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()>
                 let child_dir = Directory {
                     // parent: Option<Weak<RefCell<Directory<'a>>>>,
                     // children: Vec<Rc<RefCell<Directory<'a>>>>,
-                    parent: Some(d_ref.clone()),
+                    parent: Some(Rc::downgrade(&d_ref)),
                     children: Vec::new(),
                     found_files: Vec::new(),
                     to_add: true,
@@ -160,7 +162,7 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
             while d_ref.borrow().parent.is_some() && d_ref.borrow().to_add {
                 d_ref.borrow_mut().to_add = false;
                 let new_d_ref = d_ref.borrow().parent.clone().unwrap();
-                d_ref = new_d_ref;
+                d_ref = new_d_ref.upgrade().unwrap();
                 // let new_current = current.borrow().parent.as_ref().unwrap().uprade().unwrap();
             }
             // push the most parent directory into it
