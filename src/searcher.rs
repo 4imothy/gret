@@ -50,29 +50,48 @@ const TODO_BYTES: [u8; 4] = [b'T', b'O', b'D', b'O'];
 // since the children directories can also have .gitignores
 // need some clever way to keep track of each directories gitignore
 // files and directories can be ignored
-pub fn search(path: PathBuf, is_dir: bool) -> std::io::Result<()> {
-    // to store the number of spaces before a dir, file, line
-    // search the path for `TODO` and write it out
-    if !is_dir {
-        let file_name = get_name_as_string(&path);
-        search_file(path, file_name, None);
-        return Ok(());
-    } else {
-        let paths = path.read_dir().unwrap();
-        let name = get_name_as_string(&path);
-        let top_dir = Directory {
-            found_files: Vec::new(),
-            children: Vec::new(),
-            parent: None,
-            to_add: true,
-            name,
-        };
-        let td_ref = Rc::new(RefCell::new(top_dir));
-        search_dir(td_ref.clone(), paths)?;
-        print_directory(td_ref, 0);
+
+pub fn search_singe_file(path: PathBuf) -> Option<File> {
+    let name = get_name_as_string(&path);
+    let mut file = File {
+        lines: Vec::new(),
+        name,
+    };
+    let contents: Vec<u8> = fs::read(path).expect("Failed to read file");
+    // if a non text file than just return
+    // TODO make this call more effecient
+    if !is_text(&contents) {
+        return None;
     }
 
-    Ok(())
+    add_matches(&mut file, contents);
+
+    Some(file)
+}
+
+fn is_text(contents: &Vec<u8>) -> bool {
+    match std::str::from_utf8(contents) {
+        Ok(_) => return true,
+        Err(_) => return false,
+    };
+}
+
+pub fn start_search_dir(path: PathBuf) -> std::io::Result<DirPointer> {
+    // to store the number of spaces before a dir, file, line
+    // search the path for `TODO` and write it out
+    let paths = path.read_dir().unwrap();
+    let name = get_name_as_string(&path);
+    let top_dir = Directory {
+        found_files: Vec::new(),
+        children: Vec::new(),
+        parent: None,
+        to_add: true,
+        name,
+    };
+    let td_ref = Rc::new(RefCell::new(top_dir));
+    search_dir(td_ref.clone(), paths)?;
+
+    Ok(td_ref)
 }
 
 fn search_dir(mut d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()> {
@@ -126,32 +145,11 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
     let contents: Vec<u8> = fs::read(path).expect("Failed to read file");
     // if a non text file than just return
     // TODO make this call more effecient
-    match std::str::from_utf8(&contents) {
-        Ok(_) => {}
-        Err(_) => {
-            return;
-        }
-    };
-    let mut line_start = 0;
-    for (i, &byte) in contents.iter().enumerate() {
-        if byte == b'\n' {
-            if line_contains_bytes(&contents[line_start..i]) {
-                // add all the parents to the founds until one was added
-                let line =
-                    std::str::from_utf8(&contents[line_start..i]).expect("Failed to decode line");
-                file.lines.push(line.trim().to_string());
-            }
-            // the start of the next line is the char after the \n
-            line_start = i + 1;
-        }
+    if !is_text(&contents) {
+        return;
     }
-    // to handle when no newline at end of the file
-    if line_start < contents.len() {
-        if line_contains_bytes(&contents[line_start..]) {
-            let line = std::str::from_utf8(&contents[line_start..]).expect("Failed to decode line");
-            file.lines.push(line.trim().to_string());
-        }
-    }
+
+    add_matches(&mut file, contents);
 
     // if there were any matches
     if file.lines.len() > 0 {
@@ -194,4 +192,27 @@ fn get_name_as_string(path: &PathBuf) -> String {
         .to_os_string()
         .into_string()
         .expect("Unable to convert file name to string")
+}
+
+fn add_matches(file: &mut File, contents: Vec<u8>) {
+    let mut line_start = 0;
+    for (i, &byte) in contents.iter().enumerate() {
+        if byte == b'\n' {
+            if line_contains_bytes(&contents[line_start..i]) {
+                // add all the parents to the founds until one was added
+                let line =
+                    std::str::from_utf8(&contents[line_start..i]).expect("Failed to decode line");
+                file.lines.push(line.trim().to_string());
+            }
+            // the start of the next line is the char after the \n
+            line_start = i + 1;
+        }
+    }
+    // to handle when no newline at end of the file
+    if line_start < contents.len() {
+        if line_contains_bytes(&contents[line_start..]) {
+            let line = std::str::from_utf8(&contents[line_start..]).expect("Failed to decode line");
+            file.lines.push(line.trim().to_string());
+        }
+    }
 }
