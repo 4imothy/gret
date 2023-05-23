@@ -10,6 +10,11 @@ use std::rc::Rc;
 
 // TODO replace all the Vec::new with options, not every dir has a found file
 
+// TODO better description of file
+// Write a read_single_file that returns a file type to be printed
+/*
+valid comment
+*/
 // Need to search a directory fully, when I find a child directory search that one
 // fully as well when a file is found then search it, if that file has the target
 // phrase then in the directory it is in add this file to the list of matches
@@ -120,10 +125,13 @@ fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointe
     };
     let contents: Vec<u8> = fs::read(path).expect("Failed to read file");
     // if a non text file than just return
-    if !contents.is_ascii() {
-        return;
-    }
-
+    // TODO make this call more effecient
+    match std::str::from_utf8(&contents) {
+        Ok(_) => {}
+        Err(_) => {
+            return;
+        }
+    };
     let mut line_start = 0;
     for (i, &byte) in contents.iter().enumerate() {
         if byte == b'\n' {
