@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
 use crate::ignores_parser::parse_for_ignores;
-use crate::printer::print_directory;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fs::{self, DirEntry};
@@ -94,7 +93,7 @@ pub fn start_search_dir(path: PathBuf) -> std::io::Result<DirPointer> {
     Ok(td_ref)
 }
 
-fn search_dir(mut d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()> {
+fn search_dir(d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()> {
     // if a match is found should you print the dir
     // check if there is a .gitignore or a .ignore file and construct a ignored hashmap if there is
     let entries: Vec<DirEntry> = paths.collect::<Result<Vec<_>, _>>()?;
@@ -125,7 +124,7 @@ fn search_dir(mut d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result
                 // dir.children.push(Rc::new(RefCell::new(child_dir)));
                 let cd_ref = Rc::new(RefCell::new(child_dir));
                 d_ref.borrow_mut().children.push(cd_ref.clone());
-                search_dir(cd_ref, read);
+                search_dir(cd_ref, read)?;
             }
             Err(_) => {
                 // is a file, print_dir is changed when the dir has been printed once
