@@ -14,7 +14,19 @@ fn main() -> std::io::Result<()> {
         std::process::exit(1);
     });
 
-    searcher::search(settings.path, settings.is_dir)?;
+    let depth: usize = 0;
+    if settings.is_dir {
+        let dir = searcher::start_search_dir(settings.path)?;
+        printer::print_directory(dir, depth);
+    } else {
+        let file = searcher::search_singe_file(settings.path);
+        match file {
+            Some(f) => {
+                printer::print_file(&f, depth);
+            }
+            _ => {}
+        }
+    }
 
     Ok(())
 }
