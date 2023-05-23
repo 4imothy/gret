@@ -91,6 +91,7 @@ fn search_dir(d_ref: DirPointer, paths: std::fs::ReadDir) -> std::io::Result<()>
     // check if there is a .gitignore or a .ignore file and construct a ignored hashmap if there is
     let entries: Vec<DirEntry> = paths.collect::<Result<Vec<_>, _>>()?;
     let mut ignore_names = HashSet::new();
+    // TODO do as stated in .ignore, pass a HashSet from parent down
     parse_for_ignores(&mut ignore_names, &entries);
 
     for entry in entries {
