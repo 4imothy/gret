@@ -14,11 +14,11 @@ fn main() -> std::io::Result<()> {
         std::process::exit(1);
     });
 
-    let depth: usize = 0;
     if settings.is_dir {
         let dir = searcher::start_search_dir(settings.path)?;
         let mut out = std::io::stdout().lock();
-        printer::print_directory(&mut out, dir, depth, "".to_string(), true)?;
+        // printer::print_directory(&mut out, dir, depth, "".to_string(), true)?;
+        printer::start_print_directory(&mut out, dir);
     } else {
         // this returns none if the file in non-UTF-8
         let file = searcher::search_singe_file(settings.path);

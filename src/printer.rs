@@ -1,31 +1,26 @@
 use crate::formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
 use crate::searcher::DirPointer;
+use crate::searcher::Directory;
 use crate::searcher::File;
 use std::io::{self, Write};
 
-pub fn print_directory(
-    out: &mut io::StdoutLock,
-    dir_ptr: DirPointer,
-    depth: usize,
-    mut prefix: String,
-    parent_has_next: bool,
-) -> io::Result<()> {
+pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> io::Result<()> {
+    let prefix = "".to_string();
     let dir = dir_ptr.borrow();
+    writeln!(out, "{}", dir.name)?;
 
+    handle_descendants(out, dir, prefix)?;
+
+    Ok(())
+}
+
+fn handle_descendants(
+    out: &mut io::StdoutLock,
+    dir: std::cell::Ref<'_, Directory>,
+    prefix: String,
+) -> io::Result<()> {
     let files = &dir.found_files;
     let children = dir.children.clone();
-    if depth != 0 {
-        if parent_has_next {
-            writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, dir.name)?;
-            prefix += VER_LINE_SPACER;
-        } else {
-            writeln!(out, "{}{}{}", prefix, BRANCH_END, dir.name)?;
-            prefix += SPACER;
-        }
-    } else {
-        writeln!(out, "{}{}", prefix, dir.name)?;
-    }
-
     let mut i: usize = 0;
     let clen = children.len();
     let flen = files.len();
@@ -33,9 +28,9 @@ pub fn print_directory(
         i += 1;
         // check if it has a next file
         if i != clen || flen > 0 {
-            print_directory(out, child, depth + 1, prefix.clone(), true)?;
+            print_directory(out, child, prefix.clone(), true)?;
         } else {
-            print_directory(out, child, depth + 1, prefix.clone(), false)?;
+            print_directory(out, child, prefix.clone(), false)?;
         }
     }
     i = 0;
@@ -48,6 +43,26 @@ pub fn print_directory(
             print_file(out, file, prefix.clone(), false)?;
         }
     }
+    Ok(())
+}
+
+fn print_directory(
+    out: &mut io::StdoutLock,
+    dir_ptr: DirPointer,
+    mut prefix: String,
+    parent_has_next: bool,
+) -> io::Result<()> {
+    let dir = dir_ptr.borrow();
+
+    if parent_has_next {
+        writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, dir.name)?;
+        prefix += VER_LINE_SPACER;
+    } else {
+        writeln!(out, "{}{}{}", prefix, BRANCH_END, dir.name)?;
+        prefix += SPACER;
+    }
+
+    handle_descendants(out, dir, prefix)?;
 
     Ok(())
 }
