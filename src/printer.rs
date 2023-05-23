@@ -31,6 +31,7 @@ pub fn print_directory(
     let flen = files.len();
     for child in children {
         i += 1;
+        // check if it has a next file
         if i != clen || flen > 0 {
             print_directory(out, child, depth + 1, prefix.clone(), true)?;
         } else {
@@ -40,20 +41,20 @@ pub fn print_directory(
     i = 0;
     for file in files {
         i += 1;
+        // check if it has a next file
         if i != flen {
-            print_file(out, file, depth + 1, prefix.clone(), true)?;
+            print_file(out, file, prefix.clone(), true)?;
         } else {
-            print_file(out, file, depth + 1, prefix.clone(), false)?;
+            print_file(out, file, prefix.clone(), false)?;
         }
     }
 
     Ok(())
 }
 
-pub fn print_file(
+fn print_file(
     out: &mut io::StdoutLock,
     file: &File,
-    depth: usize,
     mut prefix: String,
     parent_has_next: bool,
 ) -> io::Result<()> {
@@ -68,16 +69,29 @@ pub fn print_file(
     let len = file.lines.len();
     let mut i = 0;
     for line in &file.lines {
-        // for _ in 0..depth {
-        //     write!(out, "{}", SPACER)?;
-        // }
         i += 1;
         if i != len {
-            write!(out, "{}{}", prefix, BRANCH_HAS_NEXT)?;
+            writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, line)?;
         } else {
-            write!(out, "{}{}", prefix, BRANCH_END)?;
+            writeln!(out, "{}{}{}", prefix, BRANCH_END, line)?;
         }
-        println!("line: {}", line);
+    }
+
+    Ok(())
+}
+
+pub fn print_single_file(out: &mut io::StdoutLock, file: &File) -> io::Result<()> {
+    writeln!(out, "{}", file.name)?;
+
+    let len = file.lines.len();
+    let mut i = 0;
+    for line in &file.lines {
+        i += 1;
+        if i != len {
+            writeln!(out, "{}{}", BRANCH_HAS_NEXT, line)?;
+        } else {
+            writeln!(out, "{}{}", BRANCH_END, line)?;
+        }
     }
 
     Ok(())
