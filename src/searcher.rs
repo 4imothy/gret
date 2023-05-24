@@ -110,20 +110,24 @@ fn search_dir(
     for entry in entries {
         let path_buf: PathBuf = entry.path();
         let name: String = get_name_as_string(&path_buf);
-        let full_path = path_buf
-            .canonicalize()
-            .map_err(|_| Errors::CantCanonicalize {
-                cause: path_buf.clone(),
-            })?;
+        println!("Name: {:?}", name);
+        let full_path = if path_buf.is_relative() {
+            path_buf
+                .canonicalize()
+                .map_err(|_| Errors::CantCanonicalize { cause: path_buf })?
+        } else {
+            path_buf
+        };
+        println!("Full path: {:?}", full_path);
         if check_match(&ignore_names, &full_path) {
             continue;
         }
-        if path_buf.is_dir() {
+        if full_path.is_dir() {
             // is a directory
             // unable to read dir new error
-            let read_dir = path_buf
+            let read_dir = full_path
                 .read_dir()
-                .map_err(|_| Errors::UnableToReadDir { cause: path_buf })?;
+                .map_err(|_| Errors::UnableToReadDir { cause: full_path })?;
             let child_dir = Directory {
                 parent: Some(Rc::downgrade(&d_ref)),
                 children: Vec::new(),
@@ -135,7 +139,7 @@ fn search_dir(
             search_dir(cd_ref, read_dir, ignore_names)?;
         } else {
             // is a file, print_dir is changed when the dir has been printed once
-            search_file(path_buf, name, Some(d_ref.clone()));
+            search_file(full_path, name, Some(d_ref.clone()));
         }
     }
 

@@ -19,10 +19,12 @@ fn parse_ignore_file(
                 let path = PathBuf::from(l);
                 // ensure the path in there file exists, if it doesn't than just ignore
                 if path.exists() {
-                    let full_path: PathBuf = path
-                        .canonicalize()
-                        .map_err(|_| Errors::CantCanonicalize { cause: path })?;
-                    names.insert(full_path);
+                    names.insert(if path.is_relative() {
+                        path.canonicalize()
+                            .map_err(|_| Errors::CantCanonicalize { cause: path })?
+                    } else {
+                        path
+                    });
                 }
             }
         }
@@ -46,6 +48,7 @@ pub fn parse_for_ignores(
     for entry in entries {
         let name = entry.file_name();
         if name == ".gitignore" {
+            // if there is a .gitignore there is probably a .git
             let git_path = PathBuf::from(".git");
             // this check is done for scenario where .gitignore exists
             // but not the .git directory
