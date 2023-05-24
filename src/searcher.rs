@@ -110,10 +110,12 @@ fn search_dir(
     for entry in entries {
         let path_buf: PathBuf = entry.path();
         let name: String = get_name_as_string(&path_buf);
-        if check_match(
-            &ignore_names,
-            &path_buf.canonicalize().expect("Unable to canocalize path"),
-        ) {
+        let full_path = path_buf
+            .canonicalize()
+            .map_err(|_| Errors::CantCanonicalize {
+                cause: path_buf.clone(),
+            })?;
+        if check_match(&ignore_names, &full_path) {
             continue;
         }
         if path_buf.is_dir() {
@@ -186,6 +188,8 @@ fn line_contains_bytes(line: &[u8]) -> bool {
     false
 }
 
+// TODO make this an OsStr, use smth like
+// self.path.file_name().unwrap_or_else(|| self.path.as_os_str())
 fn get_name_as_string(path: &PathBuf) -> String {
     path.file_name()
         .expect("Unable to get file name")

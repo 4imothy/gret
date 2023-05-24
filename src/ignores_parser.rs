@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::fs::{DirEntry, File};
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
-// parse .gitignores and .ignore files to ignore the files/directories in them
+
 fn parse_ignore_file(
     names: &mut HashSet<PathBuf>,
     path: &DirEntry,
@@ -17,9 +17,9 @@ fn parse_ignore_file(
             let l = line.unwrap();
             if !l.starts_with(comment) {
                 let path = PathBuf::from(l);
+                // ensure the path in there file exists, if it doesn't than just ignore
                 if path.exists() {
-                    // TODO handle errors here
-                    let full_path = path
+                    let full_path: PathBuf = path
                         .canonicalize()
                         .map_err(|_| Errors::CantCanonicalize { cause: path })?;
                     names.insert(full_path);
