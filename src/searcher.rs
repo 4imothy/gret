@@ -34,7 +34,7 @@ pub struct File {
     pub lines: Vec<String>,
 }
 
-// TODO add other denoters that are used, HACK, FIXME, TODO
+// TODO add other denoters that are used, HACK, FIXME, TODO, NOTE
 const TODO_BYTES: [u8; 4] = [b'T', b'O', b'D', b'O'];
 
 // since the children directories can also have .gitignores
@@ -69,8 +69,6 @@ fn is_text(contents: &Vec<u8>) -> bool {
 }
 
 pub fn start_search_dir(path: PathBuf) -> Result<DirPointer, Errors> {
-    // to store the number of spaces before a dir, file, line
-    // search the path for `TODO` and write it out
     let name = get_name_as_string(&path);
     let paths: std::fs::ReadDir = path
         .read_dir()
@@ -118,6 +116,10 @@ fn search_dir(
         } else {
             path_buf
         };
+        // this is to handle case where symmlink is linked to a file that doesn't exist
+        if !full_path.exists() {
+            return Ok(());
+        }
         println!("Full path: {:?}", full_path);
         if check_match(&ignore_names, &full_path) {
             continue;
