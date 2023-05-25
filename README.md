@@ -1,5 +1,5 @@
 ### TODO
-- Make work for symlinks that point to things that don't exist anymore
+- Add a counter for the number of files, number of children, etc.
 - Check running on windows
 - Better formatting for printing
 - Bench againts popular cli search tools
