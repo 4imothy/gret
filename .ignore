@@ -1,8 +1,5 @@
 // For testing
-// TODO make this ignore the test/d1/d2/in2.txt as .gitignore and .ignore do
 // in2.txt
-// TODO make this ignore the test/in.txt
 // test/in.txt
 // test/d1/d2/in2.txt
-
 this path doesn't exist
