@@ -102,13 +102,13 @@ fn search_dir(
                 cause: "DirEntry".to_string(),
             })?;
     // this parses through the entries completely
+    // adds the entries to the ignore names HashSet
     // need to check the ignorers before anything else
     parse_for_ignores(ignore_names, &entries)?;
 
     for entry in entries {
         let path_buf: PathBuf = entry.path();
         let name: String = get_name_as_string(&path_buf);
-        println!("Name: {:?}", name);
         let full_path = if path_buf.is_relative() {
             path_buf
                 .canonicalize()
@@ -118,9 +118,8 @@ fn search_dir(
         };
         // this is to handle case where symmlink is linked to a file that doesn't exist
         if !full_path.exists() {
-            return Ok(());
+            continue;
         }
-        println!("Full path: {:?}", full_path);
         if check_match(&ignore_names, &full_path) {
             continue;
         }
