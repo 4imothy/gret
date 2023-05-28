@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Unlicense
+
 use crate::formats::{BLUE_FG, BOLD, CYAN_FG, RESET as STYLE_RESET};
 use crate::formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
 use crate::searcher::DirPointer;

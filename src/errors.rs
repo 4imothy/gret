@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: Unlicense
 
 use crate::formats;
 use lazy_static::lazy_static;

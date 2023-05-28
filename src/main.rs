@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: Unlicense
+
 mod printer;
 mod searcher;
 use printer::{print_single_file, start_print_directory};

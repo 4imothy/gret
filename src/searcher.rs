@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Unlicense
+
 use crate::formats::{BOLD, GREEN_FG, MAGENTA_FG, RED_FG, RESET as STYLE_RESET, YELLOW_FG};
 use crate::Errors;
 use ignore::WalkBuilder;

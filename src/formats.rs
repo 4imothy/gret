@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0
+// SPDX-License-Identifier: Unlicense
 
 // Colors add 60 to the number for bright
 pub static RED_FG: &str = "\x1b[31m";
