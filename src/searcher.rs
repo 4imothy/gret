@@ -1,24 +1,47 @@
-// SPDX-License-Identifier: GPL-3.0
-
-use crate::errors::Errors;
-use crate::ignores_parser::{check_match, parse_for_ignores};
+use crate::formats::{BOLD, GREEN_FG, MAGENTA_FG, RED_FG, RESET as STYLE_RESET, YELLOW_FG};
+use crate::Errors;
+use ignore::WalkBuilder;
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::cell::RefCell;
-use std::collections::HashSet;
-use std::fs::{self, DirEntry};
+use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
-/*
-To read for the TODOs, we read each entry of a directory. If the entry
-is a directory, we seacrh it. After done with the children we come back
-and finish the search on this directory. When a file is encountered
-with the phrase TODO we add the file to the directories list of files.
-Then we chain up the parents of this directory to add them to the children
-of the earliest directory that was already added as a child to it's parent.
-*/
-
 pub type DirPointer = Rc<RefCell<Directory>>;
 pub type WeakDirPointer = Weak<RefCell<Directory>>;
+
+struct Pattern {
+    text: &'static str,
+    regex: Regex,
+    color: &'static str,
+}
+
+lazy_static! {
+    static ref PATTERNS: Vec<Pattern> = vec![
+        Pattern {
+            text: "TODO",
+            regex: Regex::new(r"TODO").unwrap(),
+            color: GREEN_FG,
+        },// TODO
+        Pattern {
+            text: "NOTE",
+            regex: Regex::new(r"NOTE").unwrap(),
+            color: MAGENTA_FG,
+        },// NOTE
+        Pattern {
+            text: "HACK",
+            regex: Regex::new(r"HACK").unwrap(),
+            color: YELLOW_FG,
+        },// HACK
+        Pattern {
+            text: "FIXME",
+            regex: Regex::new(r"FIXME").unwrap(),
+            color: RED_FG,
+        },// FIXME
+    ];
+}
 
 pub struct Directory {
     pub parent: Option<WeakDirPointer>,
@@ -29,199 +52,177 @@ pub struct Directory {
     pub to_add: bool,
 }
 
+impl Directory {
+    fn new(name: String) -> Directory {
+        Directory {
+            found_files: Vec::new(),
+            children: Vec::new(),
+            parent: None,
+            to_add: true,
+            name,
+        }
+    }
+}
+
 pub struct File {
     pub name: String,
     pub lines: Vec<String>,
+    // if it is a symbolic link then stored the
+    // path that is linked to
+    pub linked: Option<PathBuf>,
 }
 
-// TODO add other denoters that are used, HACK, FIXME, TODO, NOTE
-const TODO_BYTES: [u8; 4] = [b'T', b'O', b'D', b'O'];
+impl File {
+    fn add_matches(&mut self, contents: String) {
+        let lines = contents.lines(); // Split contents into lines
 
-// since the children directories can also have .gitignores
-// need some clever way to keep track of each directories gitignore
-// files and directories can be ignored
-
-pub fn search_singe_file(path: PathBuf) -> Option<File> {
-    let name = get_name_as_string(&path);
-    let mut file = File {
-        // this does not allocate memory
-        lines: Vec::new(),
-        name,
-    };
-    let contents: Vec<u8> = fs::read(path).expect("Failed to read file");
-
-    // if a non text file than just return
-    // TODO make this call more effecient
-    if !is_text(&contents) {
-        return None;
-    }
-
-    add_matches(&mut file, contents);
-
-    Some(file)
-}
-
-fn is_text(contents: &Vec<u8>) -> bool {
-    match std::str::from_utf8(contents) {
-        Ok(_) => return true,
-        Err(_) => return false,
-    };
-}
-
-pub fn start_search_dir(path: PathBuf) -> Result<DirPointer, Errors> {
-    let name = get_name_as_string(&path);
-    let paths: std::fs::ReadDir = path
-        .read_dir()
-        .map_err(|_| Errors::UnableToReadDir { cause: path })?;
-    let top_dir = Directory {
-        // this doesn't allocate memory
-        found_files: Vec::new(),
-        children: Vec::new(),
-        parent: None,
-        to_add: true,
-        name,
-    };
-    let td_ref = Rc::new(RefCell::new(top_dir));
-    let mut ignore_names = HashSet::new();
-    search_dir(td_ref.clone(), paths, &mut ignore_names)?;
-
-    Ok(td_ref)
-}
-
-fn search_dir(
-    d_ref: DirPointer,
-    paths: std::fs::ReadDir,
-    ignore_names: &mut HashSet<PathBuf>,
-) -> Result<(), Errors> {
-    // if a match is found should you print the dir
-    // check if there is a .gitignore or a .ignore file and construct a ignored hashmap if there is
-    let entries: Vec<DirEntry> =
-        paths
-            .collect::<Result<_, _>>()
-            .map_err(|_| Errors::CantCollect {
-                cause: "DirEntry".to_string(),
-            })?;
-    // this parses through the entries completely
-    // adds the entries to the ignore names HashSet
-    // need to check the ignorers before anything else
-    parse_for_ignores(ignore_names, &entries)?;
-
-    for entry in entries {
-        let path_buf: PathBuf = entry.path();
-        let name: String = get_name_as_string(&path_buf);
-        let full_path = if path_buf.is_relative() {
-            path_buf
-                .canonicalize()
-                .map_err(|_| Errors::CantCanonicalize { cause: path_buf })?
-        } else {
-            path_buf
-        };
-        // this is to handle case where symmlink is linked to a file that doesn't exist
-        if !full_path.exists() {
-            continue;
-        }
-        if check_match(&ignore_names, &full_path) {
-            continue;
-        }
-        if full_path.is_dir() {
-            // is a directory
-            // unable to read dir new error
-            let read_dir = full_path
-                .read_dir()
-                .map_err(|_| Errors::UnableToReadDir { cause: full_path })?;
-            let child_dir = Directory {
-                parent: Some(Rc::downgrade(&d_ref)),
-                children: Vec::new(),
-                found_files: Vec::new(),
-                to_add: true,
-                name,
-            };
-            let cd_ref = Rc::new(RefCell::new(child_dir));
-            search_dir(cd_ref, read_dir, ignore_names)?;
-        } else {
-            // is a file, print_dir is changed when the dir has been printed once
-            search_file(full_path, name, Some(d_ref.clone()));
-        }
-    }
-
-    Ok(())
-}
-
-fn search_file(path: PathBuf, file_name: String, mut directory: Option<DirPointer>) {
-    let mut file = File {
-        lines: Vec::new(),
-        name: file_name,
-    };
-    let contents: Vec<u8> = fs::read(path).expect("Failed to read file");
-    // if a non text file than just return
-    // TODO make this call more effecient
-    if !is_text(&contents) {
-        return;
-    }
-
-    add_matches(&mut file, contents);
-
-    // if there were any matches
-    if file.lines.len() > 0 {
-        // can assume founds exists when directory exists
-        if let Some(mut d_ref) = directory.take() {
-            d_ref.borrow_mut().found_files.push(file);
-            // while has a parent and it is still not in the current found tree
-            while d_ref.borrow().parent.is_some() && d_ref.borrow().to_add {
-                d_ref.borrow_mut().to_add = false;
-                let new_d_ref = d_ref.borrow().parent.clone().unwrap().upgrade().unwrap();
-                new_d_ref.borrow_mut().children.push(d_ref);
-                d_ref = new_d_ref;
+        for line in lines {
+            let mut trimmed_line: String = line.trim().to_string();
+            let mut was_match = false;
+            // based off of https://docs.rs/regex/latest/src/regex/re_unicode.rs.html#551
+            // with slight edits
+            for pattern in PATTERNS.iter() {
+                let mut new: String = String::with_capacity(trimmed_line.len());
+                // we only need the starting and ending values but
+                // I don't think there is a fn to just get that and
+                // this should be better than manual replacement
+                let rep: String =
+                    format!("{}{}{}{}", pattern.color, BOLD, pattern.text, STYLE_RESET);
+                let mut it = pattern.regex.find_iter(&trimmed_line).peekable();
+                if it.peek().is_none() {
+                    continue;
+                }
+                was_match = true;
+                let mut last_match = 0;
+                for m in it {
+                    new.push_str(&trimmed_line[last_match..m.start()]);
+                    new.push_str(&rep);
+                    last_match = m.end();
+                }
+                new.push_str(&trimmed_line[last_match..]);
+                trimmed_line = new;
+            }
+            if was_match {
+                self.lines.push(trimmed_line.to_string());
             }
         }
     }
 }
 
-fn line_contains_bytes(line: &[u8]) -> bool {
-    let line_len = line.len();
-    let tar_len = TODO_BYTES.len();
-    if line_len < tar_len {
-        return false;
-    }
+pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Errors> {
+    let w = WalkBuilder::new(&root_path).build();
+    // this stores every directory whether or not it has a matched file
+    let mut directories: HashMap<PathBuf, DirPointer> = HashMap::new();
+    let name = get_name_as_string(&root_path).unwrap_or_else(|_| "/".to_string());
+    let top_dir = Directory::new(name);
+    let td_ref: DirPointer = Rc::new(RefCell::new(top_dir));
+    // skip the top directory
+    for result in w.skip(1) {
+        // Each item yielded by the iterator is either a directory entry or an
+        // error, so either print the path or the error.
+        match result {
+            Ok(entry) => {
+                let pb: PathBuf = entry.into_path();
+                if pb.is_dir() {
+                    if directories.get(&pb).is_none() {
+                        let name = get_name_as_string(&pb)?;
+                        let new_dir = Directory::new(name);
+                        directories.insert(pb, Rc::new(RefCell::new(new_dir)));
+                    }
+                } else if pb.is_file() {
+                    // this returns none if file isn't text or has no matched lines
+                    let m_file = search_file(&pb)?;
+                    // if the file had matches
+                    if let Some(file) = m_file {
+                        let m_dir_path = pb.parent();
+                        if m_dir_path.is_none() || m_dir_path == Some(&root_path) {
+                            // if the parent is none we are in the top directory so add it to that
+                            td_ref.borrow_mut().found_files.push(file);
+                        } else if let Some(dir_path) = m_dir_path {
+                            // while file.parent isnt the root path
+                            // we add them to a list to be
+                            let mut dir_ref: &DirPointer = directories.get(dir_path).unwrap();
 
-    for i in 0..=line_len - tar_len {
-        if line[i..i + tar_len] == TODO_BYTES {
-            return true;
+                            dir_ref.borrow_mut().found_files.push(file);
+                            let mut m_dir_parent_path = dir_path.parent();
+                            // and the to add check
+                            while let Some(dir_parent_path) = m_dir_parent_path {
+                                if dir_parent_path == root_path {
+                                    break;
+                                }
+                                let parent_ref = directories.get(dir_parent_path).unwrap();
+                                if !dir_ref.borrow().to_add {
+                                    break;
+                                }
+                                parent_ref.borrow_mut().children.push(dir_ref.clone());
+                                dir_ref.borrow_mut().to_add = false;
+                                m_dir_parent_path = dir_parent_path.parent();
+                                dir_ref = parent_ref;
+                            }
+                            if dir_ref.borrow_mut().to_add {
+                                td_ref.borrow_mut().children.push(dir_ref.clone());
+                                dir_ref.borrow_mut().to_add = false;
+                            }
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                println!("{:?}", err);
+            }
         }
     }
+    Ok(td_ref)
+}
 
-    false
+pub fn search_file(pb: &PathBuf) -> Result<Option<File>, Errors> {
+    let content_bytes: Vec<u8> = fs::read(&pb).expect("Failed to read file");
+
+    let content: String = match std::str::from_utf8(&content_bytes) {
+        Ok(cont) => cont.to_owned(),
+        Err(_) => return Ok(None),
+    };
+
+    let linked = fs::read_link(&pb).ok().and_then(|target_path| {
+        match std::env::var("HOME").ok() {
+            Some(home) => {
+                // if HOME was found
+                target_path
+                    .strip_prefix(home)
+                    .ok()
+                    .map(|clean_path| PathBuf::from("~").join(clean_path))
+            }
+            None => Some(target_path),
+        }
+    });
+
+    let mut file = File {
+        lines: Vec::new(),
+        name: get_name_as_string(&pb)?,
+        linked,
+    };
+
+    file.add_matches(content);
+    if file.lines.len() == 0 {
+        return Ok(None);
+    }
+
+    return Ok(Some(file));
 }
 
 // TODO make this an OsStr, use smth like
 // self.path.file_name().unwrap_or_else(|| self.path.as_os_str())
-fn get_name_as_string(path: &PathBuf) -> String {
-    path.file_name()
-        .expect("Unable to get file name")
+fn get_name_as_string(path: &PathBuf) -> Result<String, Errors> {
+    let name = path.file_name().ok_or(Errors::CantGetName {
+        cause: path.clone(),
+    })?;
+
+    let stringed_name = name
         .to_os_string()
         .into_string()
-        .expect("Unable to convert file name to string")
-}
+        .map_err(|_| Errors::CantGetName {
+            cause: path.clone(),
+        })?;
 
-fn add_matches(file: &mut File, contents: Vec<u8>) {
-    let mut line_start = 0;
-    for (i, &byte) in contents.iter().enumerate() {
-        if byte == b'\n' {
-            if line_contains_bytes(&contents[line_start..i]) {
-                // add all the parents to the founds until one was added
-                let line =
-                    std::str::from_utf8(&contents[line_start..i]).expect("Failed to decode line");
-                file.lines.push(line.trim().to_string());
-            }
-            // the start of the next line is the char after the \n
-            line_start = i + 1;
-        }
-    }
-    // to handle when no newline at end of the file
-    if line_start < contents.len() {
-        if line_contains_bytes(&contents[line_start..]) {
-            let line = std::str::from_utf8(&contents[line_start..]).expect("Failed to decode line");
-            file.lines.push(line.trim().to_string());
-        }
-    }
+    Ok(stringed_name)
 }
