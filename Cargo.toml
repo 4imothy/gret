@@ -2,3 +2,8 @@
 name = "todo"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+ignore = "0.4.20"
+regex = "1.8.3"
+lazy_static = "1.4.0"
