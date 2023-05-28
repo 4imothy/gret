@@ -1,37 +1,45 @@
 // SPDX-License-Identifier: GPL-3.0
-
+mod printer;
+mod searcher;
+use printer::{print_single_file, start_print_directory};
 mod arg_parser;
+use arg_parser::parse_args;
 mod errors;
 use errors::Errors;
 mod formats;
-mod ignores_parser;
-mod printer;
-mod searcher;
-use arg_parser::parse_args;
+use std::ffi::OsStr;
+use std::io::{self, Write};
+use std::path::PathBuf;
 
 fn main() {
     let settings = parse_args(std::env::args().collect()).unwrap_or_else(|e| {
         exit_error(e);
     });
-
     if settings.is_dir {
-        let dir = searcher::start_search_dir(settings.path).unwrap_or_else(|e| exit_error(e));
-
+        let top_dir = searcher::begin_search_on_directory(settings.path).map_err(|e| exit_error(e));
         let mut out = std::io::stdout().lock();
-        // printer::print_directory(&mut out, dir, depth, "".to_string(), true)?;
-        printer::start_print_directory(&mut out, dir).unwrap_or_else(|e| exit_error(e));
+        start_print_directory(&mut out, top_dir.unwrap()).unwrap_or_else(|e| exit_error(e));
     } else {
-        // this returns none if the file in non-UTF-8
-        let file = searcher::search_singe_file(settings.path);
-        match file {
-            Some(f) => {
-                let mut out = std::io::stdout().lock();
-                printer::print_single_file(&mut out, &f).unwrap_or_else(|e| {
-                    exit_error(e);
-                });
+        let file = searcher::search_file(&settings.path).map_err(|e| exit_error(e));
+        let mut out = std::io::stdout().lock();
+        if let Ok(fi) = file {
+            if let Some(f) = fi {
+                print_single_file(&mut out, &f).unwrap_or_else(|e| exit_error(e));
+            } else {
+                // if there were no matches still print the name
+                write_name(&mut out, settings.path);
             }
-            _ => {}
         }
+    }
+}
+
+fn write_name(out: &mut io::StdoutLock, path: PathBuf) {
+    if let Err(_) = writeln!(
+        out,
+        "{}",
+        path.file_name().unwrap_or(OsStr::new("")).to_string_lossy()
+    ) {
+        exit_error(Errors::CantWrite);
     }
 }
 
