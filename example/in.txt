@@ -1,0 +1,2 @@
+Shows the following phrases: TODO | NOTE | FIXME | HACK
+NOTE: To request more open an issue

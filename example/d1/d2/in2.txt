@@ -1,0 +1,1 @@
+NOTE: Recursively searches all directories while respecting git config and `.ignore` files
