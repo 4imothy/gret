@@ -2,9 +2,17 @@
 name = "todo"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 ignore = "0.4.20"
 regex = "1.8.3"
 lazy_static = "1.4.0"
 clap = "4.3.0"
+formats = { path = "formats" }
+
+[build-dependencies]
+clap = "4.3.0"
+lazy_static = "1.4.0"
+formats = { path = "formats" }
+clap_complete = "4.3.0"
