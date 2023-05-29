@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Unlicense
 
+mod command;
 mod printer;
 mod searcher;
 use printer::{print_single_file, start_print_directory};
-mod arg_parser;
-use arg_parser::parse_args;
+mod args;
+use args::parse_args;
 mod errors;
 use errors::Errors;
-mod formats;
 use std::ffi::OsStr;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
 fn main() {
-    let settings = parse_args(std::env::args().collect()).unwrap_or_else(|e| {
+    let settings = parse_args().unwrap_or_else(|e| {
         exit_error(e);
     });
     if settings.is_dir {

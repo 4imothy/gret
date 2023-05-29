@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 
-use crate::formats::{BOLD, GREEN_FG, MAGENTA_FG, RED_FG, RESET as STYLE_RESET, YELLOW_FG};
 use crate::Errors;
+use formats::{BOLD, FIXME_COLOR, HACK_COLOR, NOTE_COLOR, RESET as STYLE_RESET, TODO_COLOR};
 use ignore::WalkBuilder;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -25,22 +25,22 @@ lazy_static! {
         Pattern {
             text: "TODO",
             regex: Regex::new(r"TODO").unwrap(),
-            color: GREEN_FG,
+            color: TODO_COLOR,
         },// TODO
         Pattern {
             text: "NOTE",
             regex: Regex::new(r"NOTE").unwrap(),
-            color: MAGENTA_FG,
+            color: NOTE_COLOR,
         },// NOTE
         Pattern {
             text: "HACK",
             regex: Regex::new(r"HACK").unwrap(),
-            color: YELLOW_FG,
+            color: HACK_COLOR,
         },// HACK
         Pattern {
             text: "FIXME",
             regex: Regex::new(r"FIXME").unwrap(),
-            color: RED_FG,
+            color: FIXME_COLOR,
         },// FIXME
     ];
 }
