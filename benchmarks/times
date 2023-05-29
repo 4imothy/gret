@@ -1,0 +1,13 @@
+Benchmark Results - 2023-05-29
+
+Results for directory: bench/targets/eng_subs/en.txt
+rg execution time: 5.016656875610352 seconds
+grep execution time: 206.04656410217285 seconds
+todo execution time: 360.2388038635254 seconds
+
+Results for directory: bench/targets/linux
+rg execution time: 2.7355010509490967 seconds
+grep execution time: 0.007459163665771484 seconds
+todo execution time: 31.222623109817505 seconds
+
+------------------
