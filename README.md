@@ -21,6 +21,10 @@ the commands seperately:
 cargo build --release
 ```
 
+#### To Benchmark
+Run *./benchmarks/bench* at the root directory. Results can be seen in the
+*times* file in the *benchmarks* directory.
+
 Then add the binary to your path and then source the
 script to give you proper completions. For the completions
 to work on next login you must source it at each login.
