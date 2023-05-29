@@ -11,10 +11,10 @@ fn main() -> Result<(), Error> {
         Some(outdir) => outdir,
     };
 
-    // BASH ->completions/todo.bash
+    // BASH -> completions/todo.bash
     // Zsh -> completions/_todo
-    // Fish ->completions/todo.fish
-    // Elvish ->completions/todo.elv
+    // Fish -> completions/todo.fish
+    // Elvish -> completions/todo.elv
     // PowerShell -> _todo.ps1
     let mut cmd = generate_command();
     for &shell in Shell::value_variants() {
