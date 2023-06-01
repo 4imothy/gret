@@ -11,3 +11,29 @@ grep execution time: 0.007459163665771484 seconds
 todo execution time: 31.222623109817505 seconds
 
 ------------------
+Benchmark Results - 2023-05-30
+
+Results for directory: benchmarks/targets/eng_subs/en.txt
+rg execution time: 5.671658754348755 seconds
+grep execution time: 210.4305579662323 seconds
+todo execution time: 43.595444202423096 seconds
+
+Results for directory: benchmarks/targets/linux
+rg execution time: 2.495866060256958 seconds
+grep execution time: 0.008358955383300781 seconds
+todo execution time: 4.854894161224365 seconds
+
+------------------
+Benchmark Results - 2023-05-31
+
+Results for directory: benchmarks/targets/eng_subs/en.txt
+rg execution time: 5.5326828956604 seconds
+grep execution time: 210.35723400115967 seconds
+todo execution time: 182.48879480361938 seconds
+
+Results for directory: benchmarks/targets/linux
+rg execution time: 2.3215579986572266 seconds
+grep execution time: 0.008883953094482422 seconds
+todo execution time: 22.627021074295044 seconds
+
+------------------

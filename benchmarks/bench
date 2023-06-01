@@ -17,9 +17,9 @@ ENG_SUBS_GZ_NAME = '%s.gz' % ENG_SUBS_NAME
 
 def run_binary(bin):
     start_time = time.time()
-    # subprocess.call(bin, 
-    #     stdout=subprocess.DEVNULL,
-    #     stderr=subprocess.STDOUT)
+    subprocess.call(bin, 
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT)
     end_time = time.time()
     execution_time = end_time - start_time
     return execution_time
