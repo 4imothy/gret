@@ -10,6 +10,7 @@ regex = "1.8.3"
 lazy_static = "1.4.0"
 clap = "4.3.0"
 formats = { path = "formats" }
+memchr = "2.5.0"
 
 [build-dependencies]
 clap = "4.3.0"
