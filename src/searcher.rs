@@ -1,52 +1,56 @@
 // SPDX-License-Identifier: Unlicense
 
 use crate::Errors;
-use formats::{BOLD, FIXME_COLOR, HACK_COLOR, NOTE_COLOR, RESET as STYLE_RESET, TODO_COLOR};
+use formats::{
+    BOLD as BOLD_STR, FIXME_COLOR, HACK_COLOR, NOTE_COLOR, RESET as STYLE_RESET, TODO_COLOR,
+};
 use ignore::WalkBuilder;
 use lazy_static::lazy_static;
-use regex::Regex;
+use memchr::memchr;
+use regex::bytes::Regex;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 pub type DirPointer = Rc<RefCell<Directory>>;
-pub type WeakDirPointer = Weak<RefCell<Directory>>;
 
 struct Pattern {
-    text: &'static str,
+    text: Vec<u8>,
     regex: Regex,
-    color: &'static str,
+    color: Vec<u8>,
 }
 
 lazy_static! {
+    static ref BOLD: Vec<u8> = BOLD_STR.as_bytes().to_vec();
+    static ref RESET: Vec<u8> = STYLE_RESET.as_bytes().to_vec();
+
     static ref PATTERNS: Vec<Pattern> = vec![
         Pattern {
-            text: "TODO",
+            text: b"TODO".to_vec(),
             regex: Regex::new(r"TODO").unwrap(),
-            color: TODO_COLOR,
+            color: TODO_COLOR.as_bytes().to_vec(),
         },// TODO
         Pattern {
-            text: "NOTE",
+            text: b"NOTE".to_vec(),
             regex: Regex::new(r"NOTE").unwrap(),
-            color: NOTE_COLOR,
+            color: NOTE_COLOR.as_bytes().to_vec(),
         },// NOTE
         Pattern {
-            text: "HACK",
+            text: b"HACK".to_vec(),
             regex: Regex::new(r"HACK").unwrap(),
-            color: HACK_COLOR,
+            color: HACK_COLOR.as_bytes().to_vec(),
         },// HACK
         Pattern {
-            text: "FIXME",
+            text: b"FIXME".to_vec(),
             regex: Regex::new(r"FIXME").unwrap(),
-            color: FIXME_COLOR,
+            color: FIXME_COLOR.as_bytes().to_vec(),
         },// FIXME
     ];
 }
 
 pub struct Directory {
-    pub parent: Option<WeakDirPointer>,
     // the directories that have a matched file
     pub children: Vec<DirPointer>,
     pub found_files: Vec<File>,
@@ -59,7 +63,6 @@ impl Directory {
         Directory {
             found_files: Vec::new(),
             children: Vec::new(),
-            parent: None,
             to_add: true,
             name,
         }
@@ -75,44 +78,53 @@ pub struct File {
 }
 
 impl File {
-    fn add_matches(&mut self, contents: String) {
-        let lines = contents.lines(); // Split contents into lines
+    fn add_matches(&mut self, contents: Vec<u8>) {
+        // check if it is a binary file
+        if memchr(0, &contents).is_some() {
+            return;
+        }
+        let lines = contents.split(|&byte| byte == b'\n'); // Split contents into lines
 
         for line in lines {
-            let mut trimmed_line: String = line.trim().to_string();
+            let mut temp_copy: Vec<u8> = line.clone().to_vec();
             let mut was_match = false;
-            // based off of https://docs.rs/regex/latest/src/regex/re_unicode.rs.html#551
-            // with slight edits
             for pattern in PATTERNS.iter() {
-                let mut new: String = String::with_capacity(trimmed_line.len());
-                // we only need the starting and ending values but
-                // I don't think there is a fn to just get that and
-                // this should be better than manual replacement
-                let rep: String =
-                    format!("{}{}{}{}", pattern.color, BOLD, pattern.text, STYLE_RESET);
-                let mut it = pattern.regex.find_iter(&trimmed_line).peekable();
+                let len = temp_copy.len()
+                    + BOLD.len()
+                    + pattern.color.len()
+                    + pattern.text.len()
+                    + RESET.len();
+                let mut new: Vec<u8> = Vec::with_capacity(len);
+                let mut rep: Vec<u8> = Vec::with_capacity(len);
+                rep.extend_from_slice(&pattern.color);
+                rep.extend_from_slice(&BOLD);
+                rep.extend_from_slice(&pattern.text);
+                rep.extend_from_slice(&RESET);
+                let mut it = pattern.regex.find_iter(&temp_copy).peekable();
                 if it.peek().is_none() {
                     continue;
                 }
                 was_match = true;
                 let mut last_match = 0;
                 for m in it {
-                    new.push_str(&trimmed_line[last_match..m.start()]);
-                    new.push_str(&rep);
+                    new.extend_from_slice(&temp_copy[last_match..m.start()]);
+                    new.extend_from_slice(&rep);
                     last_match = m.end();
                 }
-                new.push_str(&trimmed_line[last_match..]);
-                trimmed_line = new;
+                new.extend_from_slice(&temp_copy[last_match..]);
+                temp_copy = new;
             }
             if was_match {
-                self.lines.push(trimmed_line.to_string());
+                self.lines
+                    .push(String::from_utf8_lossy(&temp_copy).trim().to_string());
             }
         }
     }
 }
 
 pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Errors> {
-    let w = WalkBuilder::new(&root_path).build();
+    // TODO make this an option
+    let w = WalkBuilder::new(&root_path).hidden(true).build();
     // this stores every directory whether or not it has a matched file
     let mut directories: HashMap<PathBuf, DirPointer> = HashMap::new();
     let name = get_name_as_string(&root_path).unwrap_or_else(|_| "/".to_string());
@@ -126,8 +138,8 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
             Ok(entry) => {
                 let pb: PathBuf = entry.into_path();
                 if pb.is_dir() {
+                    let name = get_name_as_string(&pb)?;
                     if directories.get(&pb).is_none() {
-                        let name = get_name_as_string(&pb)?;
                         let new_dir = Directory::new(name);
                         directories.insert(pb, Rc::new(RefCell::new(new_dir)));
                     }
@@ -137,7 +149,7 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
                     // if the file had matches
                     if let Some(file) = m_file {
                         let m_dir_path = pb.parent();
-                        if m_dir_path.is_none() || m_dir_path == Some(&root_path) {
+                        if m_dir_path == Some(&root_path) {
                             // if the parent is none we are in the top directory so add it to that
                             td_ref.borrow_mut().found_files.push(file);
                         } else if let Some(dir_path) = m_dir_path {
@@ -178,12 +190,8 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
 }
 
 pub fn search_file(pb: &PathBuf) -> Result<Option<File>, Errors> {
+    // TODO make this an error
     let content_bytes: Vec<u8> = fs::read(&pb).expect("Failed to read file");
-
-    let content: String = match std::str::from_utf8(&content_bytes) {
-        Ok(cont) => cont.to_owned(),
-        Err(_) => return Ok(None),
-    };
 
     let linked = fs::read_link(&pb).ok().and_then(|target_path| {
         match std::env::var("HOME").ok() {
@@ -204,7 +212,7 @@ pub fn search_file(pb: &PathBuf) -> Result<Option<File>, Errors> {
         linked,
     };
 
-    file.add_matches(content);
+    file.add_matches(content_bytes);
     if file.lines.len() == 0 {
         return Ok(None);
     }
