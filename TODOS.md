@@ -1,8 +1,15 @@
 ### TODO
 
+- Maybe call it *gret*: regular expression tree and move away from just todos. Do  *gret TODO -t=example* or smth
+- With no pattern given just print out like a tree
+- Make work with pipe, stdin?
+
+#### Bugs
+- When piping to less make it not show color
+- Check if hidden files are searched if not then make it so they are, do another option
+
 #### Optimizations
-- Get rid of unnecessary pointers in Directory struct
-- Use OsStr instead of String for get name
+- Make reading a file faster
 
 #### New Features
 - Make option for max depth
