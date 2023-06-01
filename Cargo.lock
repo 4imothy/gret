@@ -337,6 +337,7 @@ dependencies = [
  "formats",
  "ignore",
  "lazy_static",
+ "memchr",
  "regex",
 ]
 
