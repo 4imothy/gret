@@ -1,5 +1,5 @@
 [package]
-name = "todo"
+name = "gret"
 version = "1.0.0"
 edition = "2021"
 build = "build.rs"
@@ -11,6 +11,7 @@ lazy_static = "1.4.0"
 clap = "4.3.0"
 formats = { path = "formats" }
 memchr = "2.5.0"
+atty = "0.2.14"
 
 [build-dependencies]
 clap = "4.3.0"
