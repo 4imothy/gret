@@ -1,25 +1,27 @@
-### TODO
+### gret
 
-A command line tool for code analysis. Todo recursively
-search directories showing you TODO, HACK, NOTE and FIXME
-instances in a tree structure.
- 
+gret (global regular expression tree) is a command
+line tool that searches a directory or file
+for a matching regex expression and displays
+matches in a tree structure.
+
 ![alt text](./images/example.jpg)
 
 #### To Run
-Use *cargo run* which will search on the
-project's source. If you give it a directory with
-*cargo run /path_to_some/some_dir* it will search that
-directory instead.
+Use *cargo run*, the first positional argument
+is the pattern, the second is the path to search. If
+you want to match multiple patterns use *-e* followed
+by the pattern.
 
 #### To Install
-Run the *./add_to_path.sh* after changing the
+Run the *./add_to_path.sh* script after changing the
 links location to somewhere on your path. Or run
 the commands seperately:
-
 ```
 cargo build --release
 ```
+And then source the correct completion file that is in the
+*completions/* directory.
 
 #### To Benchmark
 Run *./benchmarks/bench* at the root directory. Results can be seen in the
@@ -31,9 +33,9 @@ to work on next login you must source it at each login.
 
 | Shell |Completion Script to Source |
 |----| ---|
-|BASH       |completions/todo.bash|
-|Zsh        | completions/_todo|
-|Fish       | completions/todo.fish|
-|Elvish     |completions/todo.elv|
-|PowerShell | _todo.ps1|
+|BASH       |completions/gret.bash|
+|Zsh        | completions/_gret|
+|Fish       | completions/gret.fish|
+|Elvish     |completions/gret.elv|
+|PowerShell | _gret.ps1|
 
