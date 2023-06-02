@@ -18,7 +18,7 @@ fn main() -> Result<(), Error> {
     // PowerShell -> _todo.ps1
     let mut cmd = generate_command();
     for &shell in Shell::value_variants() {
-        generate_to(shell, &mut cmd, "todo", "completions")?;
+        generate_to(shell, &mut cmd, "gret", "completions")?;
     }
 
     Ok(())
