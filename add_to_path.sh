@@ -1,7 +1,7 @@
 #!/bin/sh
 cargo build --release
 # make this something in your path
-ln -sf $(pwd)/target/release/todo ~/bin/todo
+ln -sf $(pwd)/target/release/gret ~/bin/gret
 
 # Determine the type of shell
 SHELL_NAME=$(basename "$SHELL")
@@ -9,19 +9,19 @@ SHELL_NAME=$(basename "$SHELL")
 # Source the corresponding completion file
 case "$SHELL_NAME" in
   "bash")
-    source completions/todo.bash
+    source completions/gret.bash
     ;;
   "zsh")
-    source completions/_todo
+    source completions/_gret
     ;;
   "fish")
-    source completions/todo.fish
+    source completions/gret.fish
     ;;
   "elvish")
-    source completions/todo.elv
+    source completions/gret.elv
     ;;
   "powershell")
-    source _todo.ps1
+    source _gret.ps1
     ;;
   *)
     echo "Shell type not supported for sourcing completion file."
