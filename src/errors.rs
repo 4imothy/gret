@@ -13,6 +13,8 @@ pub enum Errors {
     PathNotFound { cause: PathBuf },
     CantWrite,
     CantGetName { cause: PathBuf },
+    InvalidRegex { cause: String },
+    FailedToGetCWD,
 }
 
 impl fmt::Display for Errors {
@@ -23,7 +25,7 @@ impl fmt::Display for Errors {
                     f,
                     "{}Path: `{}` was not found.",
                     ERROR_PREFIX.to_string(),
-                    cause.to_string_lossy()
+                    cause.display()
                 )
             }
             Errors::CantWrite => {
@@ -34,7 +36,22 @@ impl fmt::Display for Errors {
                     f,
                     "{}Can't get the name of entry: `{}`",
                     ERROR_PREFIX.to_string(),
-                    cause.to_string_lossy()
+                    cause.display()
+                )
+            }
+            Errors::InvalidRegex { cause } => {
+                write!(
+                    f,
+                    "{}Invalid Regex Pattern: `{}`",
+                    ERROR_PREFIX.to_string(),
+                    cause
+                )
+            }
+            Errors::FailedToGetCWD => {
+                write!(
+                    f,
+                    "{}Failed to get the current directory",
+                    ERROR_PREFIX.to_string(),
                 )
             }
         }

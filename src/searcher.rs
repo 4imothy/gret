@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: Unlicense
 
+use crate::args::Config;
 use crate::Errors;
-use formats::{
-    BOLD as BOLD_STR, FIXME_COLOR, HACK_COLOR, NOTE_COLOR, RESET as STYLE_RESET, TODO_COLOR,
-};
+use formats::{get_color, BOLD as BOLD_STR, RESET as RESET_STR};
 use ignore::WalkBuilder;
 use lazy_static::lazy_static;
 use memchr::memchr;
-use regex::bytes::Regex;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
@@ -16,38 +14,9 @@ use std::rc::Rc;
 
 pub type DirPointer = Rc<RefCell<Directory>>;
 
-struct Pattern {
-    text: Vec<u8>,
-    regex: Regex,
-    color: Vec<u8>,
-}
-
 lazy_static! {
     static ref BOLD: Vec<u8> = BOLD_STR.as_bytes().to_vec();
-    static ref RESET: Vec<u8> = STYLE_RESET.as_bytes().to_vec();
-
-    static ref PATTERNS: Vec<Pattern> = vec![
-        Pattern {
-            text: b"TODO".to_vec(),
-            regex: Regex::new(r"TODO").unwrap(),
-            color: TODO_COLOR.as_bytes().to_vec(),
-        },// TODO
-        Pattern {
-            text: b"NOTE".to_vec(),
-            regex: Regex::new(r"NOTE").unwrap(),
-            color: NOTE_COLOR.as_bytes().to_vec(),
-        },// NOTE
-        Pattern {
-            text: b"HACK".to_vec(),
-            regex: Regex::new(r"HACK").unwrap(),
-            color: HACK_COLOR.as_bytes().to_vec(),
-        },// HACK
-        Pattern {
-            text: b"FIXME".to_vec(),
-            regex: Regex::new(r"FIXME").unwrap(),
-            color: FIXME_COLOR.as_bytes().to_vec(),
-        },// FIXME
-    ];
+    static ref RESET: Vec<u8> = RESET_STR.as_bytes().to_vec();
 }
 
 pub struct Directory {
@@ -78,7 +47,7 @@ pub struct File {
 }
 
 impl File {
-    fn add_matches(&mut self, contents: Vec<u8>) {
+    fn add_matches(&mut self, contents: Vec<u8>, config: &Config) {
         // check if it is a binary file
         if memchr(0, &contents).is_some() {
             return;
@@ -88,19 +57,10 @@ impl File {
         for line in lines {
             let mut temp_copy: Vec<u8> = line.clone().to_vec();
             let mut was_match = false;
-            for pattern in PATTERNS.iter() {
-                let len = temp_copy.len()
-                    + BOLD.len()
-                    + pattern.color.len()
-                    + pattern.text.len()
-                    + RESET.len();
+            for (i, pattern) in config.patterns.iter().enumerate() {
+                let len = temp_copy.len() + BOLD.len() + RESET.len();
                 let mut new: Vec<u8> = Vec::with_capacity(len);
-                let mut rep: Vec<u8> = Vec::with_capacity(len);
-                rep.extend_from_slice(&pattern.color);
-                rep.extend_from_slice(&BOLD);
-                rep.extend_from_slice(&pattern.text);
-                rep.extend_from_slice(&RESET);
-                let mut it = pattern.regex.find_iter(&temp_copy).peekable();
+                let mut it = pattern.find_iter(&temp_copy).peekable();
                 if it.peek().is_none() {
                     continue;
                 }
@@ -108,7 +68,14 @@ impl File {
                 let mut last_match = 0;
                 for m in it {
                     new.extend_from_slice(&temp_copy[last_match..m.start()]);
-                    new.extend_from_slice(&rep);
+                    if config.styled {
+                        new.extend_from_slice(&get_color(i));
+                        new.extend_from_slice(&BOLD);
+                    }
+                    new.extend_from_slice(&temp_copy[m.start()..m.end()]);
+                    if config.styled {
+                        new.extend_from_slice(&RESET);
+                    }
                     last_match = m.end();
                 }
                 new.extend_from_slice(&temp_copy[last_match..]);
@@ -122,12 +89,13 @@ impl File {
     }
 }
 
-pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Errors> {
+pub fn begin_search_on_directory(config: &Config) -> Result<DirPointer, Errors> {
     // TODO make this an option
-    let w = WalkBuilder::new(&root_path).hidden(true).build();
+    let root_path: &PathBuf = &config.path;
+    let w = WalkBuilder::new(root_path).hidden(true).build();
     // this stores every directory whether or not it has a matched file
     let mut directories: HashMap<PathBuf, DirPointer> = HashMap::new();
-    let name = get_name_as_string(&root_path).unwrap_or_else(|_| "/".to_string());
+    let name = get_name_as_string(root_path).unwrap_or_else(|_| "/".to_string());
     let top_dir = Directory::new(name);
     let td_ref: DirPointer = Rc::new(RefCell::new(top_dir));
     // skip the top directory
@@ -145,9 +113,9 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
                     }
                 } else if pb.is_file() {
                     // this returns none if file isn't text or has no matched lines
-                    let m_file = search_file(&pb)?;
+                    let file = search_file(&pb, &config)?;
                     // if the file had matches
-                    if let Some(file) = m_file {
+                    if file.lines.len() != 0 {
                         let m_dir_path = pb.parent();
                         if m_dir_path == Some(&root_path) {
                             // if the parent is none we are in the top directory so add it to that
@@ -182,6 +150,7 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
                 }
             }
             Err(err) => {
+                // TODO make this error handle better
                 println!("{:?}", err);
             }
         }
@@ -189,7 +158,7 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
     Ok(td_ref)
 }
 
-pub fn search_file(pb: &PathBuf) -> Result<Option<File>, Errors> {
+pub fn search_file(pb: &PathBuf, config: &Config) -> Result<File, Errors> {
     // TODO make this an error
     let content_bytes: Vec<u8> = fs::read(&pb).expect("Failed to read file");
 
@@ -212,16 +181,14 @@ pub fn search_file(pb: &PathBuf) -> Result<Option<File>, Errors> {
         linked,
     };
 
-    file.add_matches(content_bytes);
+    file.add_matches(content_bytes, config);
     if file.lines.len() == 0 {
-        return Ok(None);
+        return Ok(file);
     }
 
-    return Ok(Some(file));
+    return Ok(file);
 }
 
-// TODO make this an OsStr, use smth like
-// self.path.file_name().unwrap_or_else(|| self.path.as_os_str())
 fn get_name_as_string(path: &PathBuf) -> Result<String, Errors> {
     let name = path.file_name().ok_or(Errors::CantGetName {
         cause: path.clone(),
