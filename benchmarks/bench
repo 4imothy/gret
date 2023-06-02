@@ -57,7 +57,7 @@ def get_commands(to_search):
     return [
         ['rg', *patterns, to_search],
         ['grep', *patterns , to_search],
-        ['todo', to_search],
+        ['gret', *patterns, '-t', to_search],
     ]
 
 if __name__ == "__main__":
