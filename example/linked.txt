@@ -1,1 +1,1 @@
-NOTE: Also supports symbolic links
+also supports symlinks

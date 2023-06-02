@@ -1,1 +1,1 @@
-NOTE: Uses tree printing structure
+Uses tree printing structure
