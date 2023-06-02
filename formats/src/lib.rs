@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: Unlicense
 
-// Colors add 60 to the number for bright
-static RED_FG: &str = "\x1b[31m";
-static GREEN_FG: &str = "\x1b[32m";
-static YELLOW_FG: &str = "\x1b[33m";
-static BLUE_FG: &str = "\x1b[34m";
-static MAGENTA_FG: &str = "\x1b[35m";
-static CYAN_FG: &str = "\x1b[36m";
+const FG_RED: &str = "\x1b[31m";
+const FG_GREEN: &str = "\x1b[32m";
+const FG_YELLOW: &str = "\x1b[33m";
+const FG_BLUE: &str = "\x1b[34m";
+const FG_MAGENTA: &str = "\x1b[35m";
+const FG_CYAN: &str = "\x1b[36m";
 
-pub static TODO_COLOR: &str = GREEN_FG;
-pub static NOTE_COLOR: &str = MAGENTA_FG;
-pub static HACK_COLOR: &str = YELLOW_FG;
-pub static FIXME_COLOR: &str = RED_FG;
+pub const FILE_COLOR: &str = FG_CYAN;
+pub const DIR_COLOR: &str = FG_BLUE;
 
-pub static FILE_COLOR: &str = CYAN_FG;
-pub static DIR_COLOR: &str = BLUE_FG;
+pub const ERROR_COLOR: &str = FG_RED;
+pub const BIN_NAME_COLOR: &str = FG_BLUE;
 
-pub static ERROR_COLOR: &str = RED_FG;
-pub static BIN_NAME_COLOR: &str = BLUE_FG;
+pub const RESET: &str = "\x1b[0m";
+pub const BOLD: &str = "\x1b[1m";
 
-// Other
-pub static RESET: &str = "\x1b[0m";
-pub static BOLD: &str = "\x1b[1m";
-// Printing
-pub static BRANCH_HAS_NEXT: &str = "├──";
-pub static BRANCH_END: &str = "└──";
-pub static VER_LINE_SPACER: &str = "│  ";
-pub static SPACER: &str = "   ";
+pub const BRANCH_HAS_NEXT: &str = "├──";
+pub const BRANCH_END: &str = "└──";
+pub const VER_LINE_SPACER: &str = "│  ";
+pub const SPACER: &str = "   ";
+
+const MATCHED_COLORS: [&str; 4] = [FG_GREEN, FG_MAGENTA, FG_YELLOW, FG_RED];
+
+pub fn get_color(i: usize) -> Vec<u8> {
+    MATCHED_COLORS[i % MATCHED_COLORS.len()].as_bytes().to_vec()
+}
