@@ -1,4 +1,4 @@
-_todo() {
+_gret() {
     local i cur prev opts cmd
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -10,7 +10,7 @@ _todo() {
     do
         case "${cmd},${i}" in
             ",$1")
-                cmd="todo"
+                cmd="gret"
                 ;;
             *)
                 ;;
@@ -18,13 +18,25 @@ _todo() {
     done
 
     case "${cmd}" in
-        todo)
-            opts="-h --help [DIRECTORY]"
+        gret)
+            opts="-e -t -b -h --target --bland --help [Pattern] [Target File or Directory]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                -e)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --target)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -t)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 *)
                     COMPREPLY=()
                     ;;
@@ -35,4 +47,4 @@ _todo() {
     esac
 }
 
-complete -F _todo -o bashdefault -o default todo
+complete -F _gret -o bashdefault -o default gret

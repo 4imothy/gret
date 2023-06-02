@@ -1,0 +1,40 @@
+#compdef gret
+
+autoload -U is-at-least
+
+_gret() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" \
+'*-e+[Specify the regex expression]:Pattern: ' \
+'-t+[Specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
+'--target=[Specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
+'-b[Whether to style output]' \
+'--bland[Whether to style output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::expression_pos -- Specify the regex expression:' \
+'::target_pos -- Specify the search target. If none provided, search the current directory.:_files' \
+&& ret=0
+}
+
+(( $+functions[_gret_commands] )) ||
+_gret_commands() {
+    local commands; commands=()
+    _describe -t commands 'gret commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_gret" ]; then
+    _gret "$@"
+else
+    compdef _gret gret
+fi
