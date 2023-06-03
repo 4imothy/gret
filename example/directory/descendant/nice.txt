@@ -1,0 +1,1 @@
+has nice styling and support for multiple patterns

@@ -89,7 +89,6 @@ impl File {
                     }
                     m_id += 1;
                 }
-                println!("{:?}", matches);
                 // now the matches have no overlaps
                 let mut new: Vec<u8> = Vec::with_capacity(line.len());
                 let mut last_match = 0;
