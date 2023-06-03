@@ -18,11 +18,19 @@ set edit:completion:arg-completer[gret] = {|@words|
     }
     var completions = [
         &'gret'= {
-            cand -e 'Specify the regex expression'
-            cand -t 'Specify the search target. If none provided, search the current directory.'
-            cand --target 'Specify the search target. If none provided, search the current directory.'
-            cand -b 'Whether to style output'
-            cand --bland 'Whether to style output'
+            cand -e 'specify the regex expression'
+            cand -t 'specify the search target. If none provided, search the current directory.'
+            cand --target 'specify the search target. If none provided, search the current directory.'
+            cand -m 'the max depth the searcher will search'
+            cand --max_depth 'the max depth the searcher will search'
+            cand -b 'if this option is present there will be no styling of text'
+            cand --bland 'if this option is present there will be no styling of text'
+            cand -c 'if this option is present, display number of files matched in a directory and number of lines matched in a file'
+            cand --show_count 'if this option is present, display number of files matched in a directory and number of lines matched in a file'
+            cand -a 'if this option is present gret will search hidden files'
+            cand --hidden 'if this option is present gret will search hidden files'
+            cand -l 'if this option is present show the line number of the matched text'
+            cand --line_number 'if this option is present show the line number of the matched text'
             cand -h 'Print help'
             cand --help 'Print help'
         }

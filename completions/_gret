@@ -15,15 +15,23 @@ _gret() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" \
-'*-e+[Specify the regex expression]:Pattern: ' \
-'-t+[Specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
-'--target=[Specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
-'-b[Whether to style output]' \
-'--bland[Whether to style output]' \
+'*-e+[specify the regex expression]:Pattern: ' \
+'-t+[specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
+'--target=[specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
+'-m+[the max depth the searcher will search]:Max Depth: ' \
+'--max_depth=[the max depth the searcher will search]:Max Depth: ' \
+'-b[if this option is present there will be no styling of text]' \
+'--bland[if this option is present there will be no styling of text]' \
+'-c[if this option is present, display number of files matched in a directory and number of lines matched in a file]' \
+'--show_count[if this option is present, display number of files matched in a directory and number of lines matched in a file]' \
+'-a[if this option is present gret will search hidden files]' \
+'--hidden[if this option is present gret will search hidden files]' \
+'-l[if this option is present show the line number of the matched text]' \
+'--line_number[if this option is present show the line number of the matched text]' \
 '-h[Print help]' \
 '--help[Print help]' \
-'::expression_pos -- Specify the regex expression:' \
-'::target_pos -- Specify the search target. If none provided, search the current directory.:_files' \
+'::expression_pos -- specify the regex expression:' \
+'::target_pos -- specify the search target. If none provided, search the current directory.:_files' \
 && ret=0
 }
 

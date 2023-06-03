@@ -19,7 +19,7 @@ _gret() {
 
     case "${cmd}" in
         gret)
-            opts="-e -t -b -h --target --bland --help [Pattern] [Target File or Directory]"
+            opts="-e -t -b -c -a -m -l -h --target --bland --show_count --hidden --max_depth --line_number --help [Pattern] [Target File or Directory]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -34,6 +34,14 @@ _gret() {
                     return 0
                     ;;
                 -t)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --max_depth)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -m)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
