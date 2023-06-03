@@ -60,11 +60,11 @@ fn get_options() -> Vec<Arg> {
             .help("the max depth the searcher will search")
             .action(ArgAction::Set),
         Arg::new("line_number")
-        .long("line_number")
-        .short('l')
-        .value_name("Show Line Number")
-        .help("if this option is present show the line number of the matched text")
-        .action(ArgAction::SetTrue)
+            .long("line_number")
+            .short('l')
+            .value_name("Show Line Number")
+            .help("if this option is present show the line number of the matched text")
+            .action(ArgAction::SetTrue)
     ]
 }
 
@@ -81,6 +81,7 @@ fn add_expr_group(mut command: Command) -> Command {
     command = command.arg(
         Arg::new("expression")
             .short('e')
+            .long("expr")
             .value_name(value_name)
             .help(help)
             .action(ArgAction::Append),
