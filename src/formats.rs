@@ -11,7 +11,6 @@ pub const FILE_COLOR: &str = FG_CYAN;
 pub const DIR_COLOR: &str = FG_BLUE;
 
 pub const ERROR_COLOR: &str = FG_RED;
-pub const BIN_NAME_COLOR: &str = FG_BLUE;
 
 pub const RESET: &str = "\x1b[0m";
 pub const BOLD: &str = "\x1b[1m";
