@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 
-use formats::{BOLD, ERROR_COLOR, RESET};
+use crate::formats::{BOLD, ERROR_COLOR, RESET};
 use lazy_static::lazy_static;
 use std::fmt;
 use std::path::PathBuf;

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Unlicense
 
+use crate::formats::{BOLD, DIR_COLOR, FILE_COLOR, RESET as STYLE_RESET};
+use crate::formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
 use crate::searcher::DirPointer;
 use crate::searcher::Directory;
 use crate::searcher::File;
 use crate::Errors;
 use crate::CONFIG;
-use formats::{BOLD, DIR_COLOR, FILE_COLOR, RESET as STYLE_RESET};
-use formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
 use std::io::{self, Write};
 
 pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> Result<(), Errors> {

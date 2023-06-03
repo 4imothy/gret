@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Unlicense
 
+use crate::formats::{get_color, BOLD as BOLD_STR, LINE_NUMBER_COLOR, RESET as RESET_STR};
 use crate::Errors;
 use crate::CONFIG;
-use formats::{get_color, BOLD as BOLD_STR, LINE_NUMBER_COLOR, RESET as RESET_STR};
 use ignore::WalkBuilder;
 use lazy_static::lazy_static;
 use memchr::memchr;

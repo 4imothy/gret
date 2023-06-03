@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 
 mod command;
+mod formats;
 mod printer;
 mod searcher;
 use printer::{print_single_file, start_print_directory};
