@@ -46,6 +46,13 @@ pub struct File {
     pub linked: Option<PathBuf>,
 }
 
+#[derive(Debug)]
+struct Match {
+    matcher_id: usize,
+    start: usize,
+    end: usize,
+}
+
 impl File {
     fn add_matches(&mut self, contents: Vec<u8>) {
         // check if it is a binary file
@@ -55,50 +62,69 @@ impl File {
         let lines = contents.split(|&byte| byte == b'\n'); // Split contents into lines
 
         for (i, line) in lines.enumerate() {
-            let mut temp_copy: Vec<u8> = line.clone().to_vec();
-            let mut was_match = false;
+            let mut matches: Vec<Match> = Vec::new();
             for (j, pattern) in CONFIG.patterns.iter().enumerate() {
-                let len = temp_copy.len() + BOLD.len() + RESET.len();
-                let mut new: Vec<u8> = Vec::with_capacity(len);
-                let mut it = pattern.find_iter(&temp_copy).peekable();
+                let mut it = pattern.find_iter(&line).peekable();
                 if it.peek().is_none() {
                     continue;
                 }
-                was_match = true;
-                let mut last_match = 0;
                 for m in it {
-                    new.extend_from_slice(&temp_copy[last_match..m.start()]);
+                    matches.push(Match {
+                        matcher_id: j,
+                        start: m.start(),
+                        end: m.end(),
+                    });
+                }
+            }
+            if matches.len() > 0 {
+                // parse through and set the overlapping to have no issues
+                matches.sort_by_key(|m| m.end);
+
+                let mut m_id = 1;
+                while m_id < matches.len() {
+                    // if this one starts before the previous ended
+                    if matches[m_id].start < matches[m_id - 1].end {
+                        // Overlap found
+                        matches[m_id].start = matches[m_id - 1].end;
+                    }
+                    m_id += 1;
+                }
+                println!("{:?}", matches);
+                // now the matches have no overlaps
+                let mut new: Vec<u8> = Vec::with_capacity(line.len());
+                let mut last_match = 0;
+                for m in matches {
+                    new.extend_from_slice(&line[last_match..m.start]);
+                    last_match = m.end;
                     if CONFIG.styled {
-                        new.extend_from_slice(&get_color(j));
+                        new.extend_from_slice(&get_color(m.matcher_id));
                         new.extend_from_slice(&BOLD);
                     }
-                    new.extend_from_slice(&temp_copy[m.start()..m.end()]);
+                    new.extend_from_slice(&line[m.start..m.end]);
                     if CONFIG.styled {
                         new.extend_from_slice(&RESET);
                     }
-                    last_match = m.end();
                 }
-                new.extend_from_slice(&temp_copy[last_match..]);
-                temp_copy = new;
-            }
-            if was_match {
-                let line_with_number = if CONFIG.show_line_number {
+                new.extend_from_slice(&line[last_match..]);
+
+                let line_to_push = if CONFIG.show_line_number {
+                    let line_idx = i + 1;
                     let line_number = if CONFIG.styled {
                         format!(
                             "{}{}: {}{}",
                             LINE_NUMBER_COLOR,
-                            i,
+                            line_idx,
                             RESET_STR,
-                            String::from_utf8_lossy(&temp_copy).trim()
+                            String::from_utf8_lossy(&new).trim()
                         )
                     } else {
-                        format!("{}: {}", i, String::from_utf8_lossy(&temp_copy).trim())
+                        format!("{}: {}", line_idx, String::from_utf8_lossy(&new).trim())
                     };
                     line_number
                 } else {
-                    String::from_utf8_lossy(&temp_copy).trim().to_string()
+                    String::from_utf8_lossy(&new).trim().to_string()
                 };
-                self.lines.push(line_with_number);
+                self.lines.push(line_to_push);
             }
         }
     }
