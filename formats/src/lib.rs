@@ -20,8 +20,9 @@ pub const BRANCH_HAS_NEXT: &str = "├──";
 pub const BRANCH_END: &str = "└──";
 pub const VER_LINE_SPACER: &str = "│  ";
 pub const SPACER: &str = "   ";
+pub const LINE_NUMBER_COLOR: &str = FG_YELLOW;
 
-const MATCHED_COLORS: [&str; 4] = [FG_GREEN, FG_MAGENTA, FG_YELLOW, FG_RED];
+const MATCHED_COLORS: [&str; 3] = [FG_GREEN, FG_MAGENTA, FG_RED];
 
 pub fn get_color(i: usize) -> Vec<u8> {
     MATCHED_COLORS[i % MATCHED_COLORS.len()].as_bytes().to_vec()
