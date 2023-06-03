@@ -19,6 +19,7 @@ set edit:completion:arg-completer[gret] = {|@words|
     var completions = [
         &'gret'= {
             cand -e 'specify the regex expression'
+            cand --expr 'specify the regex expression'
             cand -t 'specify the search target. If none provided, search the current directory.'
             cand --target 'specify the search target. If none provided, search the current directory.'
             cand -m 'the max depth the searcher will search'

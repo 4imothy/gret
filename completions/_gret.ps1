@@ -22,6 +22,7 @@ Register-ArgumentCompleter -Native -CommandName 'gret' -ScriptBlock {
     $completions = @(switch ($command) {
         'gret' {
             [CompletionResult]::new('-e', 'e', [CompletionResultType]::ParameterName, 'specify the regex expression')
+            [CompletionResult]::new('--expr', 'expr', [CompletionResultType]::ParameterName, 'specify the regex expression')
             [CompletionResult]::new('-t', 't', [CompletionResultType]::ParameterName, 'specify the search target. If none provided, search the current directory.')
             [CompletionResult]::new('--target', 'target', [CompletionResultType]::ParameterName, 'specify the search target. If none provided, search the current directory.')
             [CompletionResult]::new('-m', 'm', [CompletionResultType]::ParameterName, 'the max depth the searcher will search')

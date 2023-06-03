@@ -16,6 +16,7 @@ _gret() {
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" \
 '*-e+[specify the regex expression]:Pattern: ' \
+'*--expr=[specify the regex expression]:Pattern: ' \
 '-t+[specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
 '--target=[specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
 '-m+[the max depth the searcher will search]:Max Depth: ' \

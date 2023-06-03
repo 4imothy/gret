@@ -19,12 +19,16 @@ _gret() {
 
     case "${cmd}" in
         gret)
-            opts="-e -t -b -c -a -m -l -h --target --bland --show_count --hidden --max_depth --line_number --help [Pattern] [Target File or Directory]"
+            opts="-e -t -b -c -a -m -l -h --expr --target --bland --show_count --hidden --max_depth --line_number --help [Pattern] [Target File or Directory]"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
+                --expr)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
                 -e)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0

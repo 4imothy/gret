@@ -1,4 +1,4 @@
-complete -c gret -s e -d 'specify the regex expression' -r
+complete -c gret -s e -l expr -d 'specify the regex expression' -r
 complete -c gret -s t -l target -d 'specify the search target. If none provided, search the current directory.' -r -F
 complete -c gret -s m -l max_depth -d 'the max depth the searcher will search' -r
 complete -c gret -s b -l bland -d 'if this option is present there will be no styling of text'
