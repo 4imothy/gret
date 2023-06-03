@@ -4,6 +4,10 @@ version = "1.0.0"
 edition = "2021"
 build = "build.rs"
 
+[[bin]]
+path = "src/main.rs"
+name = "gret"
+
 [dependencies]
 ignore = "0.4.20"
 regex = "1.8.3"
