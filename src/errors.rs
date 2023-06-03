@@ -15,6 +15,7 @@ pub enum Errors {
     CantGetName { cause: PathBuf },
     InvalidRegex { cause: String },
     FailedToGetCWD,
+    StringToUsizeFail { cause: String },
 }
 
 impl fmt::Display for Errors {
@@ -52,6 +53,14 @@ impl fmt::Display for Errors {
                     f,
                     "{}Failed to get the current directory",
                     ERROR_PREFIX.to_string(),
+                )
+            }
+            Errors::StringToUsizeFail { cause } => {
+                write!(
+                    f,
+                    "{}Failed to parse `{}` to an unsigned integer",
+                    ERROR_PREFIX.to_string(),
+                    cause,
                 )
             }
         }

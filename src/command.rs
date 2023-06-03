@@ -34,16 +34,42 @@ pub fn generate_command() -> Command {
 }
 
 fn get_options() -> Vec<Arg> {
-    vec![Arg::new("bland")
-        .long("bland")
-        .short('b')
-        .value_name("bland")
-        .help("Whether to style output")
-        .action(ArgAction::SetTrue)]
+    vec![
+        Arg::new("bland")
+            .long("bland")
+            .short('b')
+            .value_name("bland")
+            .help("if this option is present there will be no styling of text")
+            .action(ArgAction::SetTrue),
+        Arg::new("show_count")
+            .long("show_count")
+            .short('c')
+            .value_name("Show Count")
+            .help("if this option is present, display number of files matched in a directory and number of lines matched in a file")
+            .action(ArgAction::SetTrue),
+        Arg::new("search_hidden")
+            .long("hidden")
+            .short('a')
+            .value_name("Search Hidden")
+            .help("if this option is present gret will search hidden files")
+            .action(ArgAction::SetTrue),
+        Arg::new("max_depth")
+            .long("max_depth")
+            .short('m')
+            .value_name("Max Depth")
+            .help("the max depth the searcher will search")
+            .action(ArgAction::Set),
+        Arg::new("line_number")
+        .long("line_number")
+        .short('l')
+        .value_name("Show Line Number")
+        .help("if this option is present show the line number of the matched text")
+        .action(ArgAction::SetTrue)
+    ]
 }
 
 fn add_expr_group(mut command: Command) -> Command {
-    let help = "Specify the regex expression";
+    let help = "specify the regex expression";
     let value_name = "Pattern";
     command = command.arg(
         Arg::new("expression_pos")
@@ -56,7 +82,7 @@ fn add_expr_group(mut command: Command) -> Command {
         Arg::new("expression")
             .short('e')
             .value_name(value_name)
-            .help("Specify the regex expression")
+            .help(help)
             .action(ArgAction::Append),
     );
 
@@ -71,7 +97,7 @@ fn add_expr_group(mut command: Command) -> Command {
 }
 
 fn add_target_group(mut command: Command) -> Command {
-    let help = "Specify the search target. If none provided, search the current directory.";
+    let help = "specify the search target. If none provided, search the current directory.";
     let value_name = "Target File or Directory";
     command = command.arg(
         Arg::new("target_pos")

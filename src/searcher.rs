@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Unlicense
 
-use crate::args::Config;
 use crate::Errors;
-use formats::{get_color, BOLD as BOLD_STR, RESET as RESET_STR};
+use crate::CONFIG;
+use formats::{get_color, BOLD as BOLD_STR, LINE_NUMBER_COLOR, RESET as RESET_STR};
 use ignore::WalkBuilder;
 use lazy_static::lazy_static;
 use memchr::memchr;
@@ -47,17 +47,17 @@ pub struct File {
 }
 
 impl File {
-    fn add_matches(&mut self, contents: Vec<u8>, config: &Config) {
+    fn add_matches(&mut self, contents: Vec<u8>) {
         // check if it is a binary file
         if memchr(0, &contents).is_some() {
             return;
         }
         let lines = contents.split(|&byte| byte == b'\n'); // Split contents into lines
 
-        for line in lines {
+        for (i, line) in lines.enumerate() {
             let mut temp_copy: Vec<u8> = line.clone().to_vec();
             let mut was_match = false;
-            for (i, pattern) in config.patterns.iter().enumerate() {
+            for (j, pattern) in CONFIG.patterns.iter().enumerate() {
                 let len = temp_copy.len() + BOLD.len() + RESET.len();
                 let mut new: Vec<u8> = Vec::with_capacity(len);
                 let mut it = pattern.find_iter(&temp_copy).peekable();
@@ -68,12 +68,12 @@ impl File {
                 let mut last_match = 0;
                 for m in it {
                     new.extend_from_slice(&temp_copy[last_match..m.start()]);
-                    if config.styled {
-                        new.extend_from_slice(&get_color(i));
+                    if CONFIG.styled {
+                        new.extend_from_slice(&get_color(j));
                         new.extend_from_slice(&BOLD);
                     }
                     new.extend_from_slice(&temp_copy[m.start()..m.end()]);
-                    if config.styled {
+                    if CONFIG.styled {
                         new.extend_from_slice(&RESET);
                     }
                     last_match = m.end();
@@ -82,17 +82,34 @@ impl File {
                 temp_copy = new;
             }
             if was_match {
-                self.lines
-                    .push(String::from_utf8_lossy(&temp_copy).trim().to_string());
+                let line_with_number = if CONFIG.show_line_number {
+                    let line_number = if CONFIG.styled {
+                        format!(
+                            "{}{}: {}{}",
+                            LINE_NUMBER_COLOR,
+                            i,
+                            RESET_STR,
+                            String::from_utf8_lossy(&temp_copy).trim()
+                        )
+                    } else {
+                        format!("{}: {}", i, String::from_utf8_lossy(&temp_copy).trim())
+                    };
+                    line_number
+                } else {
+                    String::from_utf8_lossy(&temp_copy).trim().to_string()
+                };
+                self.lines.push(line_with_number);
             }
         }
     }
 }
 
-pub fn begin_search_on_directory(config: &Config) -> Result<DirPointer, Errors> {
+pub fn begin_search_on_directory(root_path: &PathBuf) -> Result<DirPointer, Errors> {
     // TODO make this an option
-    let root_path: &PathBuf = &config.path;
-    let w = WalkBuilder::new(root_path).hidden(true).build();
+    let w = WalkBuilder::new(root_path)
+        .hidden(!CONFIG.search_hidden)
+        .max_depth(CONFIG.max_depth)
+        .build();
     // this stores every directory whether or not it has a matched file
     let mut directories: HashMap<PathBuf, DirPointer> = HashMap::new();
     let name = get_name_as_string(root_path).unwrap_or_else(|_| "/".to_string());
@@ -113,7 +130,7 @@ pub fn begin_search_on_directory(config: &Config) -> Result<DirPointer, Errors> 
                     }
                 } else if pb.is_file() {
                     // this returns none if file isn't text or has no matched lines
-                    let file = search_file(&pb, &config)?;
+                    let file = search_file(&pb)?;
                     // if the file had matches
                     if file.lines.len() != 0 {
                         let m_dir_path = pb.parent();
@@ -158,7 +175,7 @@ pub fn begin_search_on_directory(config: &Config) -> Result<DirPointer, Errors> 
     Ok(td_ref)
 }
 
-pub fn search_file(pb: &PathBuf, config: &Config) -> Result<File, Errors> {
+pub fn search_file(pb: &PathBuf) -> Result<File, Errors> {
     // TODO make this an error
     let content_bytes: Vec<u8> = fs::read(&pb).expect("Failed to read file");
 
@@ -181,7 +198,7 @@ pub fn search_file(pb: &PathBuf, config: &Config) -> Result<File, Errors> {
         linked,
     };
 
-    file.add_matches(content_bytes, config);
+    file.add_matches(content_bytes);
     if file.lines.len() == 0 {
         return Ok(file);
     }
