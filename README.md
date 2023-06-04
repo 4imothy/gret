@@ -7,6 +7,9 @@ files, the results are presented in a tree format.
 
 ![alt text](./images/example.jpg)
 
+#### Quick Install
+*cargo install gret*
+
 #### To Run
 Use *cargo run*, the first positional argument
 is the pattern, the second is the path to search. If
