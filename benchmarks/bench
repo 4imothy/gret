@@ -47,28 +47,31 @@ def download_eng_subs():
         subprocess.run(["curl", ENG_SUBS_LINK , '--output', target_zip])
         subprocess.run(['gunzip', target_zip])
 
-def get_commands(to_search):
+def get_commands(to_search, directory):
     patterns = [
         '-e', 'TODO',
         '-e', 'NOTE',
         '-e', 'FIXME',
         '-e', 'HACK'
     ]
-    return [
+    commands = [
         ['rg', *patterns, to_search],
         ['grep', *patterns , to_search],
         ['gret', *patterns, '-t', to_search],
     ]
+    if directory:
+        commands[1].insert(1, "-R")
+    return commands
 
 if __name__ == "__main__":
     download_linux_source()
     download_eng_subs()  
     to_search = path.join(TARGETS_DIR, ENG_SUBS_DIR_NAME, ENG_SUBS_NAME) 
     results = {}
-    commands = get_commands(to_search)
+    commands = get_commands(to_search, False)
     results[to_search] = run_benchmarks(commands)
     to_search = path.join(TARGETS_DIR, LINUX_DIR_NAME,) 
-    commands = get_commands(to_search)
+    commands = get_commands(to_search, True)
     results[to_search] = run_benchmarks(commands)
 
     for directory_name, directory_results in results.items():

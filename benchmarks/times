@@ -1,52 +1,13 @@
-Benchmark Results - 2023-05-29
-
-Results for directory: bench/targets/eng_subs/en.txt
-rg execution time: 5.016656875610352 seconds
-grep execution time: 206.04656410217285 seconds
-todo execution time: 360.2388038635254 seconds
-
-Results for directory: bench/targets/linux
-rg execution time: 2.7355010509490967 seconds
-grep execution time: 0.007459163665771484 seconds
-todo execution time: 31.222623109817505 seconds
-
-------------------
-Benchmark Results - 2023-05-30
+Benchmark Results - 2023-06-03
 
 Results for directory: benchmarks/targets/eng_subs/en.txt
-rg execution time: 5.671658754348755 seconds
-grep execution time: 210.4305579662323 seconds
-todo execution time: 43.595444202423096 seconds
+rg execution time: 5.6606690883636475 seconds
+grep execution time: 209.38440799713135 seconds
+gret execution time: 59.09080910682678 seconds
 
 Results for directory: benchmarks/targets/linux
-rg execution time: 2.495866060256958 seconds
-grep execution time: 0.008358955383300781 seconds
-todo execution time: 4.854894161224365 seconds
-
-------------------
-Benchmark Results - 2023-05-31
-
-Results for directory: benchmarks/targets/eng_subs/en.txt
-rg execution time: 5.5326828956604 seconds
-grep execution time: 210.35723400115967 seconds
-todo execution time: 182.48879480361938 seconds
-
-Results for directory: benchmarks/targets/linux
-rg execution time: 2.3215579986572266 seconds
-grep execution time: 0.008883953094482422 seconds
-todo execution time: 22.627021074295044 seconds
-
-------------------
-Benchmark Results - 2023-06-01
-
-Results for directory: benchmarks/targets/eng_subs/en.txt
-rg execution time: 4.223395109176636 seconds
-grep execution time: 157.17742586135864 seconds
-gret execution time: 72.1235580444336 seconds
-
-Results for directory: benchmarks/targets/linux
-rg execution time: 2.4755260944366455 seconds
-grep execution time: 0.007760047912597656 seconds
-gret execution time: 9.036580085754395 seconds
+rg execution time: 2.628432273864746 seconds
+grep execution time: 43.28487992286682 seconds
+gret execution time: 8.03533387184143 seconds
 
 ------------------
