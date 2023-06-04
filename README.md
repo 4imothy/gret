@@ -1,9 +1,9 @@
 ### gret
 
-gret (global regular expression tree) is a command
-line tool that searches a directory or file
-for a matching regex expression and displays
-matches in a tree structure.
+gret (Global Regular Expression Tree) is a command-line utility
+designed to search through directories and files for a regex
+expression that matches while respecting *.gitignore* and *.ignore*
+files, the results are presented in a tree format.
 
 ![alt text](./images/example.jpg)
 
