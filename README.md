@@ -17,7 +17,7 @@ you want to match multiple patterns use *-e* followed
 by the pattern.
 
 #### How To Use
-See the [*options.md*](./options.md) file.
+See the [options.md](./options.md) file.
 
 #### To Install
 Run the *./add_to_path.sh* script after changing the
