@@ -2,14 +2,16 @@
 
 use crate::formats::{BOLD, DIR_COLOR, FILE_COLOR, RESET as STYLE_RESET};
 use crate::formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
-use crate::searcher::DirPointer;
-use crate::searcher::Directory;
 use crate::searcher::File;
+use crate::searcher::{DirPointer, Directory};
 use crate::Errors;
 use crate::CONFIG;
 use std::io::{self, Write};
 
-pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> Result<(), Errors> {
+pub fn start_print_directory<W>(out: &mut W, dir_ptr: DirPointer) -> Result<(), Errors>
+where
+    W: Write,
+{
     let prefix = "".to_string();
     let dir = dir_ptr.borrow();
     write_dir_name(out, &dir)?;
@@ -19,11 +21,14 @@ pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> R
     Ok(())
 }
 
-fn handle_descendants(
-    out: &mut io::StdoutLock,
+fn handle_descendants<W>(
+    out: &mut W,
     dir: std::cell::Ref<'_, Directory>,
     prefix: String,
-) -> Result<(), Errors> {
+) -> Result<(), Errors>
+where
+    W: Write,
+{
     let files = &dir.found_files;
     let children = dir.children.clone();
     let mut i: usize = 0;
@@ -51,12 +56,15 @@ fn handle_descendants(
     Ok(())
 }
 
-fn print_directory(
-    out: &mut io::StdoutLock,
+fn print_directory<W>(
+    out: &mut W,
     dir_ptr: DirPointer,
     mut prefix: String,
     parent_has_next: bool,
-) -> Result<(), Errors> {
+) -> Result<(), Errors>
+where
+    W: Write,
+{
     let dir = dir_ptr.borrow();
 
     if parent_has_next {
@@ -74,12 +82,15 @@ fn print_directory(
     Ok(())
 }
 
-fn print_file(
-    out: &mut io::StdoutLock,
+fn print_file<W>(
+    out: &mut W,
     file: &File,
     mut prefix: String,
     parent_has_next: bool,
-) -> Result<(), Errors> {
+) -> Result<(), Errors>
+where
+    W: Write,
+{
     if parent_has_next {
         write!(out, "{}{}", prefix, BRANCH_HAS_NEXT).map_err(|_| Errors::CantWrite)?;
         write_file_name(out, &file)?;
@@ -105,7 +116,10 @@ fn print_file(
     Ok(())
 }
 
-pub fn print_single_file(out: &mut io::StdoutLock, file: &File) -> Result<(), Errors> {
+pub fn print_single_file<W>(out: &mut W, file: &File) -> Result<(), Errors>
+where
+    W: Write,
+{
     write_file_name(out, &file)?;
 
     let len = file.lines.len();
@@ -121,7 +135,10 @@ pub fn print_single_file(out: &mut io::StdoutLock, file: &File) -> Result<(), Er
     Ok(())
 }
 
-fn write_file_name(out: &mut io::StdoutLock, file: &File) -> Result<(), Errors> {
+fn write_file_name<W>(out: &mut W, file: &File) -> Result<(), Errors>
+where
+    W: Write,
+{
     if CONFIG.styled {
         write!(out, "{FILE_COLOR}{BOLD}").map_err(|_| Errors::CantWrite)?;
     }
@@ -157,7 +174,10 @@ fn write_file_name(out: &mut io::StdoutLock, file: &File) -> Result<(), Errors> 
     Ok(())
 }
 
-fn write_dir_name(out: &mut io::StdoutLock, dir: &Directory) -> Result<(), Errors> {
+fn write_dir_name<W>(out: &mut W, dir: &Directory) -> Result<(), Errors>
+where
+    W: Write,
+{
     if CONFIG.styled {
         write!(out, "{}{}{}{}", DIR_COLOR, BOLD, dir.name, STYLE_RESET)
             .map_err(|_| Errors::CantWrite)?;
