@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 
-use crate::formats::{BOLD, DIR_COLOR, FILE_COLOR, RESET as STYLE_RESET};
-use crate::formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
+use crate::formats::{self, BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
 use crate::searcher::File;
 use crate::searcher::{DirPointer, Directory};
 use crate::Errors;
@@ -139,29 +138,21 @@ fn write_file_name<W>(out: &mut W, file: &File) -> Result<(), Errors>
 where
     W: Write,
 {
-    if CONFIG.styled {
-        write!(out, "{FILE_COLOR}{BOLD}").map_err(|_| Errors::CantWrite)?;
-    }
-
     if let Some(linked) = &file.linked {
         if CONFIG.styled {
-            write!(out, "{}{STYLE_RESET} -> ", file.name).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{} -> ", formats::file_name(&file.name)).map_err(|_| Errors::CantWrite)?;
         } else {
             write!(out, "{} -> ", file.name).map_err(|_| Errors::CantWrite)?
         }
         if CONFIG.styled {
-            write!(
-                out,
-                "{FILE_COLOR}{BOLD}{}{STYLE_RESET}",
-                linked.to_string_lossy()
-            )
-            .map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", formats::file_name(&linked.to_string_lossy()))
+                .map_err(|_| Errors::CantWrite)?;
         } else {
             write!(out, "{}", linked.to_string_lossy()).map_err(|_| Errors::CantWrite)?;
         }
     } else {
         if CONFIG.styled {
-            write!(out, "{}{STYLE_RESET}", file.name).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", formats::file_name(&file.name)).map_err(|_| Errors::CantWrite)?;
         } else {
             write!(out, "{}", file.name).map_err(|_| Errors::CantWrite)?;
         }
@@ -179,8 +170,7 @@ where
     W: Write,
 {
     if CONFIG.styled {
-        write!(out, "{}{}{}{}", DIR_COLOR, BOLD, dir.name, STYLE_RESET)
-            .map_err(|_| Errors::CantWrite)?;
+        write!(out, "{}", formats::dir_name(&dir.name)).map_err(|_| Errors::CantWrite)?;
     } else {
         write!(out, "{}", dir.name).map_err(|_| Errors::CantWrite)?;
     }
