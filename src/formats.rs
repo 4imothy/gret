@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Unlicense
 
+use crossterm::style::{Attribute, Color, ContentStyle, StyledContent, Stylize};
+use std::fmt::Display;
+
 const FG_RED: &str = "\x1b[31m";
 const FG_GREEN: &str = "\x1b[32m";
 const FG_YELLOW: &str = "\x1b[33m";
@@ -26,3 +29,21 @@ const MATCHED_COLORS: [&str; 3] = [FG_GREEN, FG_MAGENTA, FG_RED];
 pub fn get_color(i: usize) -> Vec<u8> {
     MATCHED_COLORS[i % MATCHED_COLORS.len()].as_bytes().to_vec()
 }
+
+pub fn dir_name(name: &str) -> StyledContent<&str> {
+    name.with(Color::Blue).attribute(Attribute::Bold)
+}
+
+pub fn file_name(name: &str) -> StyledContent<&str> {
+    name.with(Color::Cyan).attribute(Attribute::Bold)
+}
+
+// trait StyledContentExt<D: Display> {
+//     fn dir_name(&self) -> StyledContent<D>;
+// }
+
+// impl<D: Display> StyledContentExt<D> for StyledContent<D> {
+//     fn dir_name(&self) -> StyledContent<D> {
+//         self.style = {}
+//     }
+// }
