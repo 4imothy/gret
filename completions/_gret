@@ -19,7 +19,6 @@ _gret() {
 '*--expr=[specify the regex expression]:Pattern: ' \
 '-t+[specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
 '--target=[specify the search target. If none provided, search the current directory.]:Target File or Directory:_files' \
-'-m+[the max depth the searcher will search]:Max Depth: ' \
 '--max_depth=[the max depth the searcher will search]:Max Depth: ' \
 '-b[if this option is present there will be no styling of text]' \
 '--bland[if this option is present there will be no styling of text]' \
@@ -29,6 +28,8 @@ _gret() {
 '--hidden[if this option is present gret will search hidden files]' \
 '-l[if this option is present show the line number of the matched text]' \
 '--line_number[if this option is present show the line number of the matched text]' \
+'-m[if this arg is present gret will show matches in a menu to be selected from]' \
+'--menu[if this arg is present gret will show matches in a menu to be selected from]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '::expression_pos -- specify the regex expression:' \
