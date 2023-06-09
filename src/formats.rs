@@ -15,6 +15,7 @@ pub const BOLD: SetAttribute = SetAttribute(Attribute::Bold);
 const RED_FG: SetForegroundColor = SetForegroundColor(Color::Red);
 const GREEN_FG: SetForegroundColor = SetForegroundColor(Color::Green);
 pub const LINE_NUMBER_FG: SetForegroundColor = SetForegroundColor(Color::Yellow);
+pub const DEFAULT_FG: SetForegroundColor = SetForegroundColor(Color::White);
 const MAGENTA_FG: SetForegroundColor = SetForegroundColor(Color::Magenta);
 
 const NEW_LINE: &str = "\n";
@@ -31,9 +32,19 @@ const MATCHED_COLORS: [SetForegroundColor; 3] = [GREEN_FG, MAGENTA_FG, RED_FG];
 
 pub fn get_terminator(is_menu: bool) -> String {
     if is_menu {
-        return NEW_LINE_RETURN.to_string();
+        // reset is necessary for menu selection
+        return format!("{}{}{}", RESET, NEW_LINE_RETURN, DEFAULT_FG);
     }
     NEW_LINE.to_string()
+}
+
+pub fn get_reset(is_menu: bool) -> String {
+    if is_menu {
+        // this has to be done for background styling on menu
+        format!("{}{}", DEFAULT_FG, NO_BOLD)
+    } else {
+        format!("{}{}", RESET_COLOR, NO_BOLD)
+    }
 }
 
 pub fn get_color(i: usize) -> SetForegroundColor {

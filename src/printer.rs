@@ -37,10 +37,15 @@ where
     for child in children {
         i += 1;
         // check if it has a next file
+        let dir = child.borrow();
         if i != clen || flen > 0 {
-            print_directory(out, child, prefix.clone(), true)?;
+            write!(out, "{}{}", prefix, BRANCH_HAS_NEXT)?;
+            write_dir_name(out, &dir)?;
+            handle_descendants(out, dir, (prefix.clone() + VER_LINE_SPACER).clone())?;
         } else {
-            print_directory(out, child, prefix.clone(), false)?;
+            write!(out, "{}{}", prefix, BRANCH_END)?;
+            write_dir_name(out, &dir)?;
+            handle_descendants(out, dir, (prefix.clone() + SPACER).clone())?;
         }
     }
     i = 0;
@@ -53,32 +58,6 @@ where
             print_file(out, file, prefix.clone(), false)?;
         }
     }
-    Ok(())
-}
-
-fn print_directory<W>(
-    out: &mut W,
-    dir_ptr: &DirPointer,
-    mut prefix: String,
-    parent_has_next: bool,
-) -> io::Result<()>
-where
-    W: Write,
-{
-    let dir = dir_ptr.borrow();
-
-    if parent_has_next {
-        write!(out, "{}{}", prefix, BRANCH_HAS_NEXT)?;
-        write_dir_name(out, &dir)?;
-        prefix += VER_LINE_SPACER;
-    } else {
-        write!(out, "{}{}", prefix, BRANCH_END)?;
-        write_dir_name(out, &dir)?;
-        prefix += SPACER;
-    }
-
-    handle_descendants(out, dir, prefix)?;
-
     Ok(())
 }
 
@@ -229,14 +208,12 @@ fn write_resets<W>(out: &mut W) -> io::Result<()>
 where
     W: Write,
 {
-    write!(out, "{}{}", formats::RESET_COLOR, formats::NO_BOLD)?;
-    Ok(())
+    write!(out, "{}", CONFIG.reset)
 }
 
 fn new_line<W>(out: &mut W) -> io::Result<()>
 where
     W: Write,
 {
-    write!(out, "{}{}", formats::RESET, CONFIG.terminator)?;
-    Ok(())
+    write!(out, "{}", CONFIG.terminator)
 }

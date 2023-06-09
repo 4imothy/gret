@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Unlicense
 
 use crate::formats::error_prefix;
-use crossterm::ErrorKind;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -12,7 +11,6 @@ pub enum Errors {
     InvalidRegex { cause: String },
     FailedToGetCWD,
     StringToUsizeFail { cause: String },
-    CrosstermError { cause: ErrorKind },
 }
 
 impl fmt::Display for Errors {
@@ -49,13 +47,6 @@ impl fmt::Display for Errors {
                     f,
                     "{}Failed to parse `{}` to an unsigned integer",
                     error_prefix, cause,
-                )
-            }
-            Errors::CrosstermError { cause } => {
-                write!(
-                    f,
-                    "{} Error styling terminal with crossterm: {}",
-                    error_prefix, cause
                 )
             }
         }
