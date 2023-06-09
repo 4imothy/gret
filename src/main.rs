@@ -24,7 +24,10 @@ fn main() {
             .unwrap_or_else(|e| exit_error(e));
         let mut out = std::io::stdout().lock();
         if CONFIG.menu {
-            menu::draw(&mut out, top_dir).unwrap_or_else(|_| exit_error(Errors::CantWrite));
+            menu::draw(&mut out, top_dir).unwrap_or_else(|e| {
+                println!("{e}");
+                exit_error(Errors::CantWrite);
+            });
         } else {
             start_print_directory(&mut out, &top_dir)
                 .unwrap_or_else(|_| exit_error(Errors::CantWrite));

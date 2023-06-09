@@ -21,6 +21,9 @@ const MAGENTA_FG: SetForegroundColor = SetForegroundColor(Color::Magenta);
 const NEW_LINE: &str = "\n";
 // the extra space is for cursor being 1 in
 // when printing menu code
+#[cfg(windows)]
+const NEW_LINE_RETURN: &str = "\r\n ";
+#[cfg(not(windows))]
 const NEW_LINE_RETURN: &str = "\n\r ";
 
 pub const BRANCH_HAS_NEXT: &str = "├──";

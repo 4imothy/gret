@@ -58,27 +58,30 @@ where
             queue!(out, terminal::Clear(ClearType::All),)?;
         }
 
-        // TODO make sure saving the style as a string works on windows
+        queue!(out, cursor::MoveTo(1, 1))?;
         for (i, line) in lines.iter().enumerate() {
-            queue!(out, cursor::MoveTo(1, i as u16 + 1))?;
             if i as u16 == selected {
                 // this only works until there is a style reset
                 queue!(out, MENU_SELECTED)?;
             }
             queue!(out, Print(line))?;
+            queue!(out, cursor::MoveToNextLine(1))?;
         }
 
         out.flush()?;
 
-        if let Event::Key(KeyEvent {
-            code, modifiers, ..
-        }) = event::read()?
+        if let Ok(Event::Key(KeyEvent {
+            code,
+            modifiers,
+            kind: crossterm::event::KeyEventKind::Press,
+            ..
+        })) = event::read()
         {
             match code {
                 KeyCode::Char(c) => match c {
                     'j' => {
                         if selected < max_selected_id - 1 {
-                            selected += 1
+                            selected += 1;
                         }
                     }
                     'k' => {
@@ -105,7 +108,10 @@ where
     // TODO make a leave function so that
     // when an error occurs above still call
     // these cleanup functions
-    cleanup(out)
+    cleanup(out)?;
+    leave_alt_screen(out)?;
+
+    Ok(())
 }
 
 fn find_selected_and_edit<W>(out: &mut W, selected: u16, top_dir: &DirPointer) -> io::Result<()>
@@ -177,8 +183,20 @@ where
     #[cfg(not(windows))]
     {
         use std::os::unix::process::CommandExt;
+        // don't leave alt screen here to avoid crash
         cleanup(out)?;
         Command::new(opener).arg(path).args(args).exec();
+    }
+    #[cfg(windows)]
+    {
+        Command::new("cmd")
+            .arg("/C")
+            .arg("start")
+            .arg(path)
+            .args(args)
+            .spawn()?;
+        cleanup(out)?;
+        leave_alt_screen(out)?;
     }
 
     Ok(())
@@ -194,7 +212,13 @@ where
         style::ResetColor,
         cursor::SetCursorStyle::DefaultUserShape,
         cursor::Show,
-        terminal::LeaveAlternateScreen
     )?;
     Ok(())
+}
+
+fn leave_alt_screen<W>(out: &mut W) -> io::Result<()>
+where
+    W: Write,
+{
+    execute!(out, terminal::LeaveAlternateScreen)
 }
