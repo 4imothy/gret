@@ -2,6 +2,7 @@
 
 use crate::command::generate_command;
 use crate::errors::Errors;
+use crate::formats::get_terminator;
 use atty::Stream;
 use regex::bytes::Regex;
 use std::path::PathBuf;
@@ -16,6 +17,7 @@ pub struct Config {
     pub max_depth: Option<usize>,
     pub show_line_number: bool,
     pub menu: bool,
+    pub terminator: String,
 }
 
 pub fn parse_args() -> Result<Config, Errors> {
@@ -77,6 +79,8 @@ pub fn parse_args() -> Result<Config, Errors> {
         std::env::current_dir().map_err(|_| Errors::FailedToGetCWD)?
     };
 
+    let terminator = get_terminator(menu);
+
     Ok(Config {
         is_dir: path.is_dir(),
         path,
@@ -87,5 +91,6 @@ pub fn parse_args() -> Result<Config, Errors> {
         max_depth,
         show_line_number,
         menu,
+        terminator,
     })
 }

@@ -1,33 +1,43 @@
 // SPDX-License-Identifier: Unlicense
 
-use crossterm::style::{Attribute, Color, ContentStyle, StyledContent, Stylize};
-use std::fmt::Display;
+use crossterm::style::{
+    Attribute, Color, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
+    StyledContent, Stylize,
+};
 
-const FG_RED: &str = "\x1b[31m";
-const FG_GREEN: &str = "\x1b[32m";
-const FG_YELLOW: &str = "\x1b[33m";
-const FG_BLUE: &str = "\x1b[34m";
-const FG_MAGENTA: &str = "\x1b[35m";
-const FG_CYAN: &str = "\x1b[36m";
+pub const MENU_SELECTED: SetBackgroundColor = SetBackgroundColor(Color::DarkGrey);
+// pub const MENU_SELECTED: SetAttribute = SetAttribute(Attribute::);
 
-pub const FILE_COLOR: &str = FG_CYAN;
-pub const DIR_COLOR: &str = FG_BLUE;
+pub const RESET: SetAttribute = SetAttribute(Attribute::Reset);
+pub const RESET_COLOR: ResetColor = ResetColor;
+pub const NO_BOLD: SetAttribute = SetAttribute(Attribute::NormalIntensity);
+pub const BOLD: SetAttribute = SetAttribute(Attribute::Bold);
+const RED_FG: SetForegroundColor = SetForegroundColor(Color::Red);
+const GREEN_FG: SetForegroundColor = SetForegroundColor(Color::Green);
+pub const LINE_NUMBER_FG: SetForegroundColor = SetForegroundColor(Color::Yellow);
+const MAGENTA_FG: SetForegroundColor = SetForegroundColor(Color::Magenta);
 
-pub const ERROR_COLOR: &str = FG_RED;
-
-pub const RESET: &str = "\x1b[0m";
-pub const BOLD: &str = "\x1b[1m";
+const NEW_LINE: &str = "\n";
+// the extra space is for cursor being 1 in
+// when printing menu code
+const NEW_LINE_RETURN: &str = "\n\r ";
 
 pub const BRANCH_HAS_NEXT: &str = "├──";
 pub const BRANCH_END: &str = "└──";
 pub const VER_LINE_SPACER: &str = "│  ";
 pub const SPACER: &str = "   ";
-pub const LINE_NUMBER_COLOR: &str = FG_YELLOW;
 
-const MATCHED_COLORS: [&str; 3] = [FG_GREEN, FG_MAGENTA, FG_RED];
+const MATCHED_COLORS: [SetForegroundColor; 3] = [GREEN_FG, MAGENTA_FG, RED_FG];
 
-pub fn get_color(i: usize) -> Vec<u8> {
-    MATCHED_COLORS[i % MATCHED_COLORS.len()].as_bytes().to_vec()
+pub fn get_terminator(is_menu: bool) -> String {
+    if is_menu {
+        return NEW_LINE_RETURN.to_string();
+    }
+    NEW_LINE.to_string()
+}
+
+pub fn get_color(i: usize) -> SetForegroundColor {
+    MATCHED_COLORS[i % MATCHED_COLORS.len()]
 }
 
 pub fn dir_name(name: &str) -> StyledContent<&str> {
@@ -38,12 +48,6 @@ pub fn file_name(name: &str) -> StyledContent<&str> {
     name.with(Color::Cyan).attribute(Attribute::Bold)
 }
 
-// trait StyledContentExt<D: Display> {
-//     fn dir_name(&self) -> StyledContent<D>;
-// }
-
-// impl<D: Display> StyledContentExt<D> for StyledContent<D> {
-//     fn dir_name(&self) -> StyledContent<D> {
-//         self.style = {}
-//     }
-// }
+pub fn error_prefix() -> String {
+    format!("{}{}Error: {}", BOLD, RED_FG, RESET)
+}

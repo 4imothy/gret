@@ -1,23 +1,19 @@
 // SPDX-License-Identifier: Unlicense
 
-use crate::formats::{get_color, BOLD as BOLD_STR, LINE_NUMBER_COLOR, RESET as RESET_STR};
 use crate::Errors;
 use crate::CONFIG;
 use ignore::WalkBuilder;
-use lazy_static::lazy_static;
 use memchr::memchr;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 pub type DirPointer = Rc<RefCell<Directory>>;
-
-lazy_static! {
-    static ref BOLD: Vec<u8> = BOLD_STR.as_bytes().to_vec();
-    static ref RESET: Vec<u8> = RESET_STR.as_bytes().to_vec();
-}
+// TODO use this type in the HashMap
+type WeakDirPointer = Weak<RefCell<Directory>>;
 
 pub struct Directory {
     // the directories that have a matched file
@@ -25,14 +21,16 @@ pub struct Directory {
     pub found_files: Vec<File>,
     pub name: String,
     pub to_add: bool,
+    pub path: PathBuf,
 }
 
 impl Directory {
-    fn new(name: String) -> Directory {
+    fn new(name: String, path: PathBuf) -> Directory {
         Directory {
             found_files: Vec::new(),
             children: Vec::new(),
             to_add: true,
+            path,
             name,
         }
     }
@@ -40,28 +38,62 @@ impl Directory {
 
 pub struct File {
     pub name: String,
-    pub lines: Vec<String>,
+    pub lines: Vec<LineMatch>,
     // if it is a symbolic link then stored the
     // path that is linked to
     pub linked: Option<PathBuf>,
+    pub path: PathBuf,
 }
 
-#[derive(Debug)]
-struct Match {
-    matcher_id: usize,
-    start: usize,
-    end: usize,
+pub struct Match {
+    pub matcher_id: usize,
+    pub start: usize,
+    pub end: usize,
 }
 
+pub struct LineMatch {
+    pub line_num: usize,
+    pub contents: Vec<u8>,
+    pub matches: Vec<Match>,
+}
+
+// Source: https://stackoverflow.com/questions/31101915/how-to-implement-trim-for-vecu8
+trait SliceExt {
+    fn trim(&self) -> &Self;
+}
+
+impl SliceExt for [u8] {
+    fn trim(&self) -> &[u8] {
+        fn is_whitespace(c: &u8) -> bool {
+            *c == b'\t' || *c == b' '
+        }
+
+        fn is_not_whitespace(c: &u8) -> bool {
+            !is_whitespace(c)
+        }
+
+        if let Some(first) = self.iter().position(is_not_whitespace) {
+            if let Some(last) = self.iter().rposition(is_not_whitespace) {
+                &self[first..last + 1]
+            } else {
+                unreachable!();
+            }
+        } else {
+            &[]
+        }
+    }
+}
 impl File {
     fn add_matches(&mut self, contents: Vec<u8>) {
         // check if it is a binary file
         if memchr(0, &contents).is_some() {
             return;
         }
-        let lines = contents.split(|&byte| byte == b'\n'); // Split contents into lines
+        // Split contents into lines
+        let lines = contents.split(|&byte| byte == b'\n');
 
-        for (i, line) in lines.enumerate() {
+        for (line_num, line_with_whitespace) in lines.enumerate() {
+            let line = line_with_whitespace.trim();
             let mut matches: Vec<Match> = Vec::new();
             for (j, pattern) in CONFIG.patterns.iter().enumerate() {
                 let mut it = pattern.find_iter(&line).peekable();
@@ -89,56 +121,26 @@ impl File {
                     }
                     m_id += 1;
                 }
-                // now the matches have no overlaps
-                let mut new: Vec<u8> = Vec::with_capacity(line.len());
-                let mut last_match = 0;
-                for m in matches {
-                    new.extend_from_slice(&line[last_match..m.start]);
-                    last_match = m.end;
-                    if CONFIG.styled {
-                        new.extend_from_slice(&get_color(m.matcher_id));
-                        new.extend_from_slice(&BOLD);
-                    }
-                    new.extend_from_slice(&line[m.start..m.end]);
-                    if CONFIG.styled {
-                        new.extend_from_slice(&RESET);
-                    }
-                }
-                new.extend_from_slice(&line[last_match..]);
-
-                let line_to_push = if CONFIG.show_line_number {
-                    let line_idx = i + 1;
-                    let line_number = if CONFIG.styled {
-                        format!(
-                            "{}{}: {}{}",
-                            LINE_NUMBER_COLOR,
-                            line_idx,
-                            RESET_STR,
-                            String::from_utf8_lossy(&new).trim()
-                        )
-                    } else {
-                        format!("{}: {}", line_idx, String::from_utf8_lossy(&new).trim())
-                    };
-                    line_number
-                } else {
-                    String::from_utf8_lossy(&new).trim().to_string()
-                };
-                self.lines.push(line_to_push);
+                self.lines.push(LineMatch {
+                    contents: line.to_vec(),
+                    matches,
+                    line_num: line_num + 1,
+                });
             }
         }
     }
 }
 
-pub fn begin_search_on_directory(root_path: &PathBuf) -> Result<DirPointer, Errors> {
+pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Errors> {
     // TODO make this an option
-    let w = WalkBuilder::new(root_path)
+    let w = WalkBuilder::new(&root_path)
         .hidden(!CONFIG.search_hidden)
         .max_depth(CONFIG.max_depth)
         .build();
     // this stores every directory whether or not it has a matched file
-    let mut directories: HashMap<PathBuf, DirPointer> = HashMap::new();
-    let name = get_name_as_string(root_path).unwrap_or_else(|_| "/".to_string());
-    let top_dir = Directory::new(name);
+    let mut directories: HashMap<OsString, DirPointer> = HashMap::new();
+    let name = get_name_as_string(&root_path).unwrap_or_else(|_| "/".to_string());
+    let top_dir = Directory::new(name, root_path);
     let td_ref: DirPointer = Rc::new(RefCell::new(top_dir));
     // skip the top directory
     for result in w.skip(1) {
@@ -149,32 +151,39 @@ pub fn begin_search_on_directory(root_path: &PathBuf) -> Result<DirPointer, Erro
                 let pb: PathBuf = entry.into_path();
                 if pb.is_dir() {
                     let name = get_name_as_string(&pb)?;
-                    if directories.get(&pb).is_none() {
-                        let new_dir = Directory::new(name);
-                        directories.insert(pb, Rc::new(RefCell::new(new_dir)));
+                    let stringed: &OsString = &pb.as_os_str().to_os_string();
+                    if directories.get(stringed).is_none() {
+                        let new_dir = Directory::new(name, pb);
+                        let nd_ref = Rc::new(RefCell::new(new_dir));
+                        // directories.insert(&, nd_ref);
+                        directories.insert(stringed.clone(), nd_ref.clone());
                     }
                 } else if pb.is_file() {
                     // this returns none if file isn't text or has no matched lines
-                    let file = search_file(&pb)?;
+                    let file = search_file(pb)?;
                     // if the file had matches
                     if file.lines.len() != 0 {
-                        let m_dir_path = pb.parent();
-                        if m_dir_path == Some(&root_path) {
+                        let m_dir_path: Option<PathBuf> =
+                            file.path.parent().map(|v| v.to_path_buf());
+                        if m_dir_path == Some(td_ref.borrow().path.clone()) {
                             // if the parent is none we are in the top directory so add it to that
                             td_ref.borrow_mut().found_files.push(file);
                         } else if let Some(dir_path) = m_dir_path {
                             // while file.parent isnt the root path
                             // we add them to a list to be
-                            let mut dir_ref: &DirPointer = directories.get(dir_path).unwrap();
+                            let mut dir_ref: &DirPointer =
+                                directories.get(dir_path.as_os_str()).unwrap();
 
                             dir_ref.borrow_mut().found_files.push(file);
                             let mut m_dir_parent_path = dir_path.parent();
                             // and the to add check
                             while let Some(dir_parent_path) = m_dir_parent_path {
-                                if dir_parent_path == root_path {
+                                if dir_parent_path == &td_ref.borrow().path {
                                     break;
                                 }
-                                let parent_ref = directories.get(dir_parent_path).unwrap();
+                                let parent_ref =
+                                    directories.get(dir_parent_path.as_os_str()).unwrap();
+                                // TODO uncomment this
                                 if !dir_ref.borrow().to_add {
                                     break;
                                 }
@@ -200,7 +209,7 @@ pub fn begin_search_on_directory(root_path: &PathBuf) -> Result<DirPointer, Erro
     Ok(td_ref)
 }
 
-pub fn search_file(pb: &PathBuf) -> Result<File, Errors> {
+pub fn search_file(pb: PathBuf) -> Result<File, Errors> {
     // TODO make this an error
     let content_bytes: Vec<u8> = fs::read(&pb).expect("Failed to read file");
 
@@ -220,6 +229,7 @@ pub fn search_file(pb: &PathBuf) -> Result<File, Errors> {
     let mut file = File {
         lines: Vec::new(),
         name: get_name_as_string(&pb)?,
+        path: pb,
         linked,
     };
 
