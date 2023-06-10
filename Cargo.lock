@@ -234,7 +234,6 @@ dependencies = [
  "lazy_static",
  "memchr",
  "regex",
- "winapi-util",
 ]
 
 [[package]]
