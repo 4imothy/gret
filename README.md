@@ -5,7 +5,9 @@ designed to search through directories and files for a regex
 expression that matches while respecting *.gitignore* and *.ignore*
 files, the results are presented in a tree format.
 
-![demo video](./readme/demo.mp4)
+
+https://github.com/4imothy/gret/assets/40186632/07043fef-4376-433a-90a2-33c3913570dd
+
 
 #### Quick Install
 *cargo install gret*
@@ -44,4 +46,3 @@ to work on next login you must source it at each login.
 |Fish       | completions/gret.fish|
 |Elvish     |completions/gret.elv|
 |PowerShell | _gret.ps1|
-
