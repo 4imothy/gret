@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Unlicense
 
-use crate::formats::{BOLD, DIR_COLOR, FILE_COLOR, RESET as STYLE_RESET};
-use crate::formats::{BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
-use crate::searcher::DirPointer;
-use crate::searcher::Directory;
-use crate::searcher::File;
-use crate::Errors;
+use crate::formats::{self, BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
+use crate::searcher::{DirPointer, Directory, File, LineMatch};
 use crate::CONFIG;
 use std::io::{self, Write};
 
-pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> Result<(), Errors> {
+pub fn start_print_directory<W>(out: &mut W, dir_ptr: &DirPointer) -> io::Result<()>
+where
+    W: Write,
+{
+    // prefix starts at nothing when at the top level
     let prefix = "".to_string();
     let dir = dir_ptr.borrow();
     write_dir_name(out, &dir)?;
@@ -19,23 +19,31 @@ pub fn start_print_directory(out: &mut io::StdoutLock, dir_ptr: DirPointer) -> R
     Ok(())
 }
 
-fn handle_descendants(
-    out: &mut io::StdoutLock,
+fn handle_descendants<W>(
+    out: &mut W,
     dir: std::cell::Ref<'_, Directory>,
     prefix: String,
-) -> Result<(), Errors> {
+) -> io::Result<()>
+where
+    W: Write,
+{
+    let children = &dir.children;
     let files = &dir.found_files;
-    let children = dir.children.clone();
+    let flen = files.len();
     let mut i: usize = 0;
     let clen = children.len();
-    let flen = files.len();
     for child in children {
         i += 1;
         // check if it has a next file
+        let dir = child.borrow();
         if i != clen || flen > 0 {
-            print_directory(out, child, prefix.clone(), true)?;
+            write!(out, "{}{}", prefix, BRANCH_HAS_NEXT)?;
+            write_dir_name(out, &dir)?;
+            handle_descendants(out, dir, (prefix.clone() + VER_LINE_SPACER).clone())?;
         } else {
-            print_directory(out, child, prefix.clone(), false)?;
+            write!(out, "{}{}", prefix, BRANCH_END)?;
+            write_dir_name(out, &dir)?;
+            handle_descendants(out, dir, (prefix.clone() + SPACER).clone())?;
         }
     }
     i = 0;
@@ -51,123 +59,159 @@ fn handle_descendants(
     Ok(())
 }
 
-fn print_directory(
-    out: &mut io::StdoutLock,
-    dir_ptr: DirPointer,
-    mut prefix: String,
-    parent_has_next: bool,
-) -> Result<(), Errors> {
-    let dir = dir_ptr.borrow();
-
-    if parent_has_next {
-        write!(out, "{}{}", prefix, BRANCH_HAS_NEXT).map_err(|_| Errors::CantWrite)?;
-        write_dir_name(out, &dir)?;
-        prefix += VER_LINE_SPACER;
-    } else {
-        write!(out, "{}{}", prefix, BRANCH_END).map_err(|_| Errors::CantWrite)?;
-        write_dir_name(out, &dir)?;
-        prefix += SPACER;
-    }
-
-    handle_descendants(out, dir, prefix)?;
-
-    Ok(())
-}
-
-fn print_file(
-    out: &mut io::StdoutLock,
+fn print_file<W>(
+    out: &mut W,
     file: &File,
     mut prefix: String,
     parent_has_next: bool,
-) -> Result<(), Errors> {
+) -> io::Result<()>
+where
+    W: Write,
+{
     if parent_has_next {
-        write!(out, "{}{}", prefix, BRANCH_HAS_NEXT).map_err(|_| Errors::CantWrite)?;
+        write!(out, "{}{}", prefix, BRANCH_HAS_NEXT)?;
         write_file_name(out, &file)?;
         prefix += VER_LINE_SPACER;
     } else {
-        write!(out, "{}{}", prefix, BRANCH_END).map_err(|_| Errors::CantWrite)?;
+        write!(out, "{}{}", prefix, BRANCH_END)?;
         write_file_name(out, &file)?;
         prefix += SPACER;
     }
 
     let len = file.lines.len();
     let mut i = 0;
-    for line in &file.lines {
+    for line_match in file.lines.iter() {
         i += 1;
         if i != len {
-            writeln!(out, "{}{}{}", prefix, BRANCH_HAS_NEXT, line)
-                .map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}{}", prefix, BRANCH_HAS_NEXT,)?;
         } else {
-            writeln!(out, "{}{}{}", prefix, BRANCH_END, line).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}{}", prefix, BRANCH_END)?;
         }
+        print_line(out, line_match)?;
+        new_line(out)?;
     }
 
     Ok(())
 }
 
-pub fn print_single_file(out: &mut io::StdoutLock, file: &File) -> Result<(), Errors> {
+pub fn print_single_file<W>(out: &mut W, file: &File) -> io::Result<()>
+where
+    W: Write,
+{
     write_file_name(out, &file)?;
 
     let len = file.lines.len();
     let mut i = 0;
-    for line in &file.lines {
+    for line_match in file.lines.iter() {
         i += 1;
         if i != len {
-            writeln!(out, "{}{}", BRANCH_HAS_NEXT, line).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", BRANCH_HAS_NEXT)?;
         } else {
-            writeln!(out, "{}{}", BRANCH_END, line).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", BRANCH_END)?;
         }
+        print_line(out, line_match)?;
+        new_line(out)?;
     }
     Ok(())
 }
 
-fn write_file_name(out: &mut io::StdoutLock, file: &File) -> Result<(), Errors> {
-    if CONFIG.styled {
-        write!(out, "{FILE_COLOR}{BOLD}").map_err(|_| Errors::CantWrite)?;
-    }
-
+pub fn write_file_name<W>(out: &mut W, file: &File) -> io::Result<()>
+where
+    W: Write,
+{
     if let Some(linked) = &file.linked {
         if CONFIG.styled {
-            write!(out, "{}{STYLE_RESET} -> ", file.name).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{} -> ", formats::file_name(&file.name))?;
         } else {
-            write!(out, "{} -> ", file.name).map_err(|_| Errors::CantWrite)?
+            write!(out, "{} -> ", file.name)?
         }
         if CONFIG.styled {
-            write!(
-                out,
-                "{FILE_COLOR}{BOLD}{}{STYLE_RESET}",
-                linked.to_string_lossy()
-            )
-            .map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", formats::file_name(&linked.to_string_lossy()))?;
         } else {
-            write!(out, "{}", linked.to_string_lossy()).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", linked.to_string_lossy())?;
         }
     } else {
         if CONFIG.styled {
-            write!(out, "{}{STYLE_RESET}", file.name).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", formats::file_name(&file.name))?;
         } else {
-            write!(out, "{}", file.name).map_err(|_| Errors::CantWrite)?;
+            write!(out, "{}", file.name)?;
         }
     }
     if CONFIG.show_count {
-        write!(out, ": {}", file.lines.len()).map_err(|_| Errors::CantWrite)?;
+        write!(out, ": {}", file.lines.len())?;
     }
-    writeln!(out).map_err(|_| Errors::CantWrite)?;
+    new_line(out)?;
 
     Ok(())
 }
 
-fn write_dir_name(out: &mut io::StdoutLock, dir: &Directory) -> Result<(), Errors> {
+fn write_dir_name<W>(out: &mut W, dir: &Directory) -> io::Result<()>
+where
+    W: Write,
+{
     if CONFIG.styled {
-        write!(out, "{}{}{}{}", DIR_COLOR, BOLD, dir.name, STYLE_RESET)
-            .map_err(|_| Errors::CantWrite)?;
+        write!(out, "{}", formats::dir_name(&dir.name))?;
     } else {
-        write!(out, "{}", dir.name).map_err(|_| Errors::CantWrite)?;
+        write!(out, "{}", dir.name)?;
     }
     if CONFIG.show_count {
-        write!(out, ": {}", dir.found_files.len() + dir.children.len())
-            .map_err(|_| Errors::CantWrite)?;
+        write!(out, ": {}", dir.found_files.len() + dir.children.len())?;
     }
-    writeln!(out).map_err(|_| Errors::CantWrite)?;
+    new_line(out)?;
     Ok(())
+}
+
+pub fn print_line<W>(out: &mut W, line_match: &LineMatch) -> std::io::Result<()>
+where
+    W: std::io::Write,
+{
+    let line: &[u8] = &line_match.contents;
+    // let line: &[u8] = &line_match.contents;
+    let line_num = line_match.line_num;
+    if !CONFIG.styled {
+        write!(out, "{}", String::from_utf8_lossy(&line).trim())?;
+        return Ok(());
+    }
+    let mut last_match = 0;
+    if CONFIG.show_line_number {
+        if CONFIG.styled {
+            write!(out, "{}{}", formats::LINE_NUMBER_FG, formats::BOLD)?;
+        }
+        write!(out, "{}", line_num)?;
+        if CONFIG.styled {
+            write_resets(out)?;
+        }
+    }
+    for m in line_match.matches.iter() {
+        write!(
+            out,
+            "{}",
+            String::from_utf8_lossy(&line[last_match..m.start])
+        )?;
+        last_match = m.end;
+        if CONFIG.styled {
+            write!(out, "{}{}", formats::get_color(m.matcher_id), formats::BOLD,)?;
+        }
+        write!(out, "{}", String::from_utf8_lossy(&line[m.start..m.end]))?;
+        if CONFIG.styled {
+            write_resets(out)?;
+        }
+    }
+    write!(out, "{}", String::from_utf8_lossy(&line[last_match..]))?;
+
+    Ok(())
+}
+
+fn write_resets<W>(out: &mut W) -> io::Result<()>
+where
+    W: Write,
+{
+    write!(out, "{}", CONFIG.reset)
+}
+
+fn new_line<W>(out: &mut W) -> io::Result<()>
+where
+    W: Write,
+{
+    write!(out, "{}", CONFIG.terminator)
 }

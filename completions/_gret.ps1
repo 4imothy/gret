@@ -25,7 +25,6 @@ Register-ArgumentCompleter -Native -CommandName 'gret' -ScriptBlock {
             [CompletionResult]::new('--expr', 'expr', [CompletionResultType]::ParameterName, 'specify the regex expression')
             [CompletionResult]::new('-t', 't', [CompletionResultType]::ParameterName, 'specify the search target. If none provided, search the current directory.')
             [CompletionResult]::new('--target', 'target', [CompletionResultType]::ParameterName, 'specify the search target. If none provided, search the current directory.')
-            [CompletionResult]::new('-m', 'm', [CompletionResultType]::ParameterName, 'the max depth the searcher will search')
             [CompletionResult]::new('--max_depth', 'max_depth', [CompletionResultType]::ParameterName, 'the max depth the searcher will search')
             [CompletionResult]::new('-b', 'b', [CompletionResultType]::ParameterName, 'if this option is present there will be no styling of text')
             [CompletionResult]::new('--bland', 'bland', [CompletionResultType]::ParameterName, 'if this option is present there will be no styling of text')
@@ -35,6 +34,8 @@ Register-ArgumentCompleter -Native -CommandName 'gret' -ScriptBlock {
             [CompletionResult]::new('--hidden', 'hidden', [CompletionResultType]::ParameterName, 'if this option is present gret will search hidden files')
             [CompletionResult]::new('-l', 'l', [CompletionResultType]::ParameterName, 'if this option is present show the line number of the matched text')
             [CompletionResult]::new('--line_number', 'line_number', [CompletionResultType]::ParameterName, 'if this option is present show the line number of the matched text')
+            [CompletionResult]::new('-m', 'm', [CompletionResultType]::ParameterName, 'if this arg is present gret will show matches in a menu to be selected from')
+            [CompletionResult]::new('--menu', 'menu', [CompletionResultType]::ParameterName, 'if this arg is present gret will show matches in a menu to be selected from')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             break

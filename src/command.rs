@@ -2,6 +2,7 @@ use clap::{Arg, ArgAction, ArgGroup, Command, ValueHint};
 use lazy_static::lazy_static;
 
 const AUTHORS: &str = "Timothy Cronin";
+
 lazy_static! {
     static ref ABOUT: String = "
 gret (global regular expression tree) is a command
@@ -55,7 +56,6 @@ fn get_options() -> Vec<Arg> {
             .action(ArgAction::SetTrue),
         Arg::new("max_depth")
             .long("max_depth")
-            .short('m')
             .value_name("Max Depth")
             .help("the max depth the searcher will search")
             .action(ArgAction::Set),
@@ -64,7 +64,13 @@ fn get_options() -> Vec<Arg> {
             .short('l')
             .value_name("Show Line Number")
             .help("if this option is present show the line number of the matched text")
-            .action(ArgAction::SetTrue)
+            .action(ArgAction::SetTrue),
+        Arg::new("menu")
+            .long("menu")
+            .short('m')
+            .value_name("Open a selection menu")
+            .help("if this arg is present gret will show matches in a menu to be selected from")
+            .action(ArgAction::SetTrue),
     ]
 }
 

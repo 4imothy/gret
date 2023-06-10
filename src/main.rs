@@ -2,6 +2,8 @@
 
 mod command;
 mod formats;
+mod menu;
+use menu::SearchedTypes;
 mod printer;
 mod searcher;
 use printer::{print_single_file, start_print_directory};
@@ -19,13 +21,40 @@ lazy_static! {
 
 fn main() {
     if CONFIG.is_dir {
-        let top_dir = searcher::begin_search_on_directory(&CONFIG.path).map_err(|e| exit_error(e));
+        let top_dir = searcher::begin_search_on_directory(CONFIG.path.clone())
+            .unwrap_or_else(|e| exit_error(e));
         let mut out = std::io::stdout().lock();
-        start_print_directory(&mut out, top_dir.unwrap()).unwrap_or_else(|e| exit_error(e));
+        if CONFIG.menu {
+            menu::draw(&mut out, SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
+                exit_error(Errors::IOError {
+                    cause: e.to_string(),
+                });
+            });
+        } else {
+            start_print_directory(&mut out, &top_dir).unwrap_or_else(|e| {
+                exit_error(Errors::IOError {
+                    cause: e.to_string(),
+                })
+            });
+        }
     } else {
-        let mut out = std::io::stdout().lock();
-        let file = searcher::search_file(&CONFIG.path).unwrap_or_else(|e| exit_error(e));
-        print_single_file(&mut out, &file).unwrap_or_else(|e| exit_error(e));
+        let m_file = searcher::search_file(CONFIG.path.clone()).unwrap_or_else(|e| exit_error(e));
+        if let Some(file) = m_file {
+            let mut out = std::io::stdout().lock();
+            if CONFIG.menu {
+                menu::draw(&mut out, SearchedTypes::File(file)).unwrap_or_else(|e| {
+                    exit_error(Errors::IOError {
+                        cause: e.to_string(),
+                    });
+                });
+            } else {
+                print_single_file(&mut out, &file).unwrap_or_else(|e| {
+                    exit_error(Errors::IOError {
+                        cause: e.to_string(),
+                    });
+                });
+            }
+        }
     }
 }
 

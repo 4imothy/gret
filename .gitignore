@@ -2,3 +2,4 @@ target
 .DS_Store
 benchmarks/targets
 src_with_grep
+src_copy

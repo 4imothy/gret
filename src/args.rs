@@ -2,6 +2,7 @@
 
 use crate::command::generate_command;
 use crate::errors::Errors;
+use crate::formats;
 use atty::Stream;
 use regex::bytes::Regex;
 use std::path::PathBuf;
@@ -15,6 +16,9 @@ pub struct Config {
     pub search_hidden: bool,
     pub max_depth: Option<usize>,
     pub show_line_number: bool,
+    pub menu: bool,
+    pub terminator: String,
+    pub reset: String,
 }
 
 pub fn parse_args() -> Result<Config, Errors> {
@@ -48,7 +52,10 @@ pub fn parse_args() -> Result<Config, Errors> {
     let show_count: bool = *matches.get_one::<bool>("show_count").unwrap();
     let search_hidden: bool = *matches.get_one::<bool>("search_hidden").unwrap();
     let show_line_number: bool = *matches.get_one::<bool>("line_number").unwrap();
+    let menu: bool = *matches.get_one::<bool>("menu").unwrap();
+
     let max_depth_str: Option<&String> = matches.get_one::<String>("max_depth");
+
     let depth_result: Result<Option<usize>, Errors> = max_depth_str.map_or(Ok(None), |s| {
         s.parse::<usize>()
             .map(Some)
@@ -73,6 +80,9 @@ pub fn parse_args() -> Result<Config, Errors> {
         std::env::current_dir().map_err(|_| Errors::FailedToGetCWD)?
     };
 
+    let terminator = formats::get_terminator(menu);
+    let reset = formats::get_reset(menu);
+
     Ok(Config {
         is_dir: path.is_dir(),
         path,
@@ -82,5 +92,8 @@ pub fn parse_args() -> Result<Config, Errors> {
         search_hidden,
         max_depth,
         show_line_number,
+        menu,
+        terminator,
+        reset,
     })
 }

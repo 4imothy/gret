@@ -15,14 +15,16 @@ ENG_SUBS_LINK = 'https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2016/mono/en.tx
 ENG_SUBS_NAME = 'en.txt'
 ENG_SUBS_GZ_NAME = '%s.gz' % ENG_SUBS_NAME
 
+
 def run_binary(bin):
     start_time = time.time()
-    subprocess.call(bin, 
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.STDOUT)
+    subprocess.call(bin,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT)
     end_time = time.time()
     execution_time = end_time - start_time
     return execution_time
+
 
 def run_benchmarks(bins):
     results = {}
@@ -32,10 +34,13 @@ def run_benchmarks(bins):
         results[bin[0]] = execution_time
     return results
 
+
 def download_linux_source():
     target_dir = path.join(TARGETS_DIR, LINUX_DIR_NAME)
     if not path.isdir(target_dir):
-        subprocess.run(["git", "clone", "--depth", "1", LINUX_LINK, target_dir])
+        subprocess.run(["git", "clone", "--depth",
+                       "1", LINUX_LINK, target_dir])
+
 
 def download_eng_subs():
     target_dir = path.join(TARGETS_DIR, ENG_SUBS_DIR_NAME)
@@ -44,8 +49,9 @@ def download_eng_subs():
     if not path.isdir(target_dir):
         os.makedirs(target_dir)
     if not path.exists(target):
-        subprocess.run(["curl", ENG_SUBS_LINK , '--output', target_zip])
+        subprocess.run(["curl", ENG_SUBS_LINK, '--output', target_zip])
         subprocess.run(['gunzip', target_zip])
+
 
 def get_commands(to_search, directory):
     patterns = [
@@ -56,21 +62,22 @@ def get_commands(to_search, directory):
     ]
     commands = [
         ['rg', *patterns, to_search],
-        ['grep', *patterns , to_search],
+        ['grep', *patterns, to_search],
         ['gret', *patterns, '-t', to_search],
     ]
     if directory:
         commands[1].insert(1, "-R")
     return commands
 
+
 if __name__ == "__main__":
     download_linux_source()
-    download_eng_subs()  
-    to_search = path.join(TARGETS_DIR, ENG_SUBS_DIR_NAME, ENG_SUBS_NAME) 
+    download_eng_subs()
+    to_search = path.join(TARGETS_DIR, ENG_SUBS_DIR_NAME, ENG_SUBS_NAME)
     results = {}
     commands = get_commands(to_search, False)
     results[to_search] = run_benchmarks(commands)
-    to_search = path.join(TARGETS_DIR, LINUX_DIR_NAME,) 
+    to_search = path.join(TARGETS_DIR, LINUX_DIR_NAME,)
     commands = get_commands(to_search, True)
     results[to_search] = run_benchmarks(commands)
 
@@ -83,8 +90,10 @@ if __name__ == "__main__":
     with open('benchmarks/times', "a") as file:
         file.write(f"Benchmark Results - {current_date}\n\n")
         for directory_name, directory_results in results.items():
-            file.write(f"Results for directory: {path.relpath(directory_name)}\n")
+            file.write(
+                f"Results for directory: {path.relpath(directory_name)}\n")
             for command, execution_time in directory_results.items():
-                file.write(f"{command} execution time: {execution_time} seconds\n")
+                file.write(
+                    f"{command} execution time: {execution_time} seconds\n")
             file.write("\n")
         file.write("------------------\n")

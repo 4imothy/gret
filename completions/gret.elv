@@ -22,7 +22,6 @@ set edit:completion:arg-completer[gret] = {|@words|
             cand --expr 'specify the regex expression'
             cand -t 'specify the search target. If none provided, search the current directory.'
             cand --target 'specify the search target. If none provided, search the current directory.'
-            cand -m 'the max depth the searcher will search'
             cand --max_depth 'the max depth the searcher will search'
             cand -b 'if this option is present there will be no styling of text'
             cand --bland 'if this option is present there will be no styling of text'
@@ -32,6 +31,8 @@ set edit:completion:arg-completer[gret] = {|@words|
             cand --hidden 'if this option is present gret will search hidden files'
             cand -l 'if this option is present show the line number of the matched text'
             cand --line_number 'if this option is present show the line number of the matched text'
+            cand -m 'if this arg is present gret will show matches in a menu to be selected from'
+            cand --menu 'if this arg is present gret will show matches in a menu to be selected from'
             cand -h 'Print help'
             cand --help 'Print help'
         }
