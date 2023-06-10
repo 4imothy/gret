@@ -64,18 +64,17 @@ where
     'outer: loop {
         queue!(out, cursor::MoveTo(1, 1))?;
 
-        if window_end.is_some() && selected + SCROLL_OFFSET == window_end.unwrap() {
-            queue!(out, terminal::Clear(ClearType::All))?;
-            window_start = window_start.map(|v| v + 1);
-            window_end = window_end.map(|v| v + 1);
-        }
-        if selected + 1 > SCROLL_OFFSET // to avoid unsigned overflow
-            && window_start.is_some()
-            && selected + 1 - SCROLL_OFFSET == window_start.unwrap()
-        {
-            queue!(out, terminal::Clear(ClearType::All))?;
-            window_start = window_start.map(|v| v - 1);
-            window_end = window_end.map(|v| v - 1);
+        if let (Some(end), Some(start)) = (window_end, window_start) {
+            if selected + SCROLL_OFFSET == end {
+                queue!(out, terminal::Clear(ClearType::All))?;
+                window_start = Some(start + 1);
+                window_end = Some(end + 1);
+            }
+            if selected + 1 > SCROLL_OFFSET && selected + 1 - SCROLL_OFFSET == start {
+                queue!(out, terminal::Clear(ClearType::All))?;
+                window_start = Some(start - 1);
+                window_end = Some(end - 1);
+            }
         }
 
         for (i, line) in lines
