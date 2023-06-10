@@ -3,7 +3,8 @@
 gret (Global Regular Expression Tree) is a command-line utility
 designed to search through directories and files for a regex
 expression that matches while respecting *.gitignore* and *.ignore*
-files, the results are presented in a tree format.
+files, the results are presented in a tree format and a menu can be
+spawned to select from.
 
 
 https://github.com/4imothy/gret/assets/40186632/07043fef-4376-433a-90a2-33c3913570dd
@@ -18,10 +19,22 @@ is the pattern, the second is the path to search. If
 you want to match multiple patterns use *-e* followed
 by the pattern.
 
+To launch a menu use the flag *-m* or *--menu*, this
+will open a match picker. After selecting one by pression *enter*
+the file/directory will be launched by *\$EDITOR* if on unix or *start*
+if on windows. If *\$EDITOR* is not found, then *open* will be called on
+macos and *xdg-open* will be called on other non-windows operating systems.
+
 #### How To Use
 See the [options.md](./options.md) file.
 
 #### To Install
+```
+cargo install gret
+```
+
+**or**
+
 Run the *./add_to_path.sh* script after changing the
 links location to somewhere on your path. Or run
 the commands seperately:
