@@ -24,7 +24,8 @@ pub enum SearchedTypes {
     File(File),
 }
 
-const SCROLL_OFFSET: usize = 5;
+const SCROLL_OFFSET: u16 = 5;
+const START_X: u16 = 1;
 
 pub fn draw<W>(out: &mut W, searched: SearchedTypes) -> io::Result<()>
 where
@@ -35,7 +36,9 @@ where
         style::ResetColor,
         cursor::Hide,
         terminal::EnterAlternateScreen,
-        terminal::EnableLineWrap,
+        // line wrapping causes issues with cursor y being off
+        // from where it should be
+        terminal::DisableLineWrap,
     )?;
     terminal::enable_raw_mode()?;
 
@@ -48,9 +51,6 @@ where
             printer::print_single_file(&mut buffer, &file)?;
         }
     }
-
-    // first test with just highlighting different lines
-
     let lines: Vec<String> = buffer
         .split(|&byte| byte == b'\n')
         .map(|vec| String::from_utf8_lossy(vec).into_owned())
@@ -59,56 +59,43 @@ where
     draw_loop(out, lines, searched)
 }
 
+fn print_structure<W>(out: &mut W, lines: &Vec<String>, max_prints: Option<u16>) -> io::Result<()>
+where
+    W: Write,
+{
+    queue!(out, cursor::MoveTo(START_X, 1))?;
+    for (i, line) in lines
+        .iter()
+        .enumerate()
+        .take(max_prints.map(|v| v as usize).unwrap_or(lines.len()))
+    {
+        if i == 0 {
+            queue!(
+                out,
+                Print(line.as_str().on(formats::MENU_SELECTED)),
+                cursor::MoveToNextLine(1)
+            )?;
+        } else {
+            queue!(out, Print(line), cursor::MoveToNextLine(1))?;
+        }
+    }
+    out.flush()
+}
+
 fn draw_loop<W>(out: &mut W, lines: Vec<String>, searched: SearchedTypes) -> io::Result<()>
 where
     W: Write,
 {
     let mut selected: usize = 0;
-    let max_selected_id = lines.len() - 1;
-    // (columns, rows)
-    let mut size: Option<(u16, u16)> = terminal::size().ok();
+    let max_selected_id: usize = lines.len() - 1;
     // - 1 on height because we start printing at (1,1)
-    let mut max_prints: Option<usize> = size.map(|(_, height)| height as usize - 1);
-    // TODO make this an option tuple to clean up
-    let mut window_start: Option<usize> = Some(0);
-    let mut window_end: Option<usize> = match (window_start, max_prints) {
-        (Some(start), Some(max)) => Some(start + max),
-        _ => None,
-    };
+    // size -> (columns, rows)
+    // if we were able to get the size then enable the scrolling feature
+    let mut max_prints: Option<u16> = terminal::size().ok().map(|(_, height)| height - 1);
+    let scrolling: bool = max_prints.is_some();
+    let mut cursor_y: u16 = START_X;
+    print_structure(out, &lines, max_prints)?;
     'outer: loop {
-        queue!(out, cursor::MoveTo(1, 1))?;
-
-        // selected % (max_prints + 1) tells the
-        // number lines down that selected is
-        // probably better to use the crossterm::ScrollUp But I
-        // am not sure how to implement that
-        if let (Some(end), Some(start)) = (window_end, window_start) {
-            if selected + SCROLL_OFFSET == end {
-                window_start = Some(start + 1);
-                window_end = Some(end + 1);
-                execute!(out, terminal::Clear(ClearType::All))?;
-            }
-            if selected + 1 > SCROLL_OFFSET && selected + 1 - SCROLL_OFFSET == start {
-                window_start = Some(start - 1);
-                window_end = Some(end - 1);
-                execute!(out, terminal::Clear(ClearType::All))?;
-            }
-        }
-
-        for (i, line) in lines
-            .iter()
-            .enumerate()
-            .skip(window_start.unwrap_or(0))
-            .take(max_prints.unwrap_or(lines.len()))
-        {
-            if i == selected {
-                queue!(out, formats::MENU_SELECTED)?;
-            }
-            queue!(out, Print(line), cursor::MoveToNextLine(1))?;
-        }
-
-        out.flush()?;
-
         let event = event::read();
 
         if let Ok(Event::Key(KeyEvent {
@@ -122,12 +109,46 @@ where
                 KeyCode::Char(c) => match c {
                     'j' => {
                         if selected < max_selected_id - 1 {
+                            destyle_selected(out, cursor_y, lines.get(selected).unwrap())?;
                             selected += 1;
+                            style_selected(out, cursor_y + 1, lines.get(selected).unwrap())?;
+                            if scrolling && cursor_y + SCROLL_OFFSET == max_prints.unwrap() {
+                                execute!(out, terminal::ScrollUp(1))?;
+                                if (selected + SCROLL_OFFSET as usize) < lines.len() {
+                                    execute!(out, cursor::MoveTo(START_X, max_prints.unwrap()))?;
+                                    execute!(
+                                        out,
+                                        Print(
+                                            lines.get(selected + SCROLL_OFFSET as usize).unwrap()
+                                        )
+                                    )?;
+                                }
+                            } else {
+                                cursor_y += 1;
+                            }
                         }
                     }
                     'k' => {
                         if selected > 0 {
-                            selected -= 1
+                            destyle_selected(out, cursor_y, lines.get(selected).unwrap())?;
+                            selected -= 1;
+                            style_selected(out, cursor_y - 1, lines.get(selected).unwrap())?;
+                            if selected < SCROLL_OFFSET as usize {
+                                cursor_y -= 1;
+                            } else if scrolling && cursor_y == SCROLL_OFFSET {
+                                execute!(out, terminal::ScrollDown(1))?;
+                                if selected + 1 > SCROLL_OFFSET as usize {
+                                    execute!(out, cursor::MoveTo(START_X, 0))?;
+                                    execute!(
+                                        out,
+                                        Print(
+                                            lines.get(selected - SCROLL_OFFSET as usize).unwrap()
+                                        )
+                                    )?;
+                                }
+                            } else {
+                                cursor_y -= 1;
+                            }
                         }
                     }
                     'q' => break 'outer,
@@ -143,15 +164,14 @@ where
                 }
                 _ => {}
             }
-        } else if let Ok(Event::Resize(cols, rows)) = event {
-            if size.is_some() && size != terminal::size().ok() {
-                queue!(out, terminal::Clear(ClearType::All))?;
-                size = Some((cols, rows));
-                max_prints = size.map(|(_, height)| height as usize);
-                window_end = match (window_start, max_prints) {
-                    (Some(start), Some(max)) => Some(start + max),
-                    _ => None,
-                };
+        } else if let Ok(Event::Resize(_, rows)) = event {
+            if max_prints != Some(rows) {
+                // does a overflow line cross over to the next?
+                execute!(out, terminal::Clear(ClearType::All))?;
+                max_prints = Some(rows);
+                print_structure(out, &lines, max_prints)?;
+                selected = 0;
+                cursor_y = 1;
             }
         }
     }
@@ -162,6 +182,24 @@ where
     cleanup(out)?;
 
     Ok(())
+}
+
+fn style_selected<W>(out: &mut W, cursor_y: u16, line: &str) -> io::Result<()>
+where
+    W: Write,
+{
+    execute!(
+        out,
+        cursor::MoveTo(START_X, cursor_y),
+        style::Print(line.on(formats::MENU_SELECTED))
+    )
+}
+
+fn destyle_selected<W>(out: &mut W, cursor_y: u16, line: &str) -> io::Result<()>
+where
+    W: Write,
+{
+    execute!(out, cursor::MoveTo(START_X, cursor_y), Print(line))
 }
 
 fn find_selected_and_edit<W>(
