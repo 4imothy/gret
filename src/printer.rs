@@ -110,8 +110,8 @@ where
             write!(out, "{}", BRANCH_END)?;
         }
         print_line(out, line_match)?;
+        new_line(out)?;
     }
-    // new_line(out)?;
     Ok(())
 }
 
