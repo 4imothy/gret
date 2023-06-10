@@ -5,7 +5,7 @@ designed to search through directories and files for a regex
 expression that matches while respecting *.gitignore* and *.ignore*
 files, the results are presented in a tree format.
 
-![demo video](./images/demo.gif)
+![demo video](./readme/demo.mov)
 
 #### Quick Install
 *cargo install gret*
