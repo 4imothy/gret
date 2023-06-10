@@ -34,8 +34,10 @@ fn main() {
         }
     } else {
         let mut out = std::io::stdout().lock();
-        let file = searcher::search_file(CONFIG.path.clone()).unwrap_or_else(|e| exit_error(e));
-        print_single_file(&mut out, &file).unwrap_or_else(|_| exit_error(Errors::CantWrite));
+        let m_file = searcher::search_file(CONFIG.path.clone()).unwrap_or_else(|e| exit_error(e));
+        if let Some(file) = m_file {
+            print_single_file(&mut out, &file).unwrap_or_else(|_| exit_error(Errors::CantWrite));
+        }
     }
 }
 

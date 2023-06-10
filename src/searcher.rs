@@ -9,11 +9,9 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 pub type DirPointer = Rc<RefCell<Directory>>;
-// TODO use this type in the HashMap
-type WeakDirPointer = Weak<RefCell<Directory>>;
 
 pub struct Directory {
     // the directories that have a matched file
@@ -132,7 +130,6 @@ impl File {
 }
 
 pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Errors> {
-    // TODO make this an option
     let w = WalkBuilder::new(&root_path)
         .hidden(!CONFIG.search_hidden)
         .max_depth(CONFIG.max_depth)
@@ -160,9 +157,15 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
                     }
                 } else if pb.is_file() {
                     // this returns none if file isn't text or has no matched lines
-                    let file = search_file(pb)?;
+                    let m_file = search_file(pb)?;
                     // if the file had matches
-                    if file.lines.len() != 0 {
+                    if let Some(file) = m_file.and_then(|file| {
+                        if file.lines.len() > 0 {
+                            Some(file)
+                        } else {
+                            None
+                        }
+                    }) {
                         let m_dir_path: Option<PathBuf> =
                             file.path.parent().map(|v| v.to_path_buf());
                         if m_dir_path == Some(td_ref.borrow().path.clone()) {
@@ -183,7 +186,6 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
                                 }
                                 let parent_ref =
                                     directories.get(dir_parent_path.as_os_str()).unwrap();
-                                // TODO uncomment this
                                 if !dir_ref.borrow().to_add {
                                     break;
                                 }
@@ -200,18 +202,20 @@ pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Error
                     }
                 }
             }
-            Err(err) => {
-                // TODO make this error handle better
-                println!("{:?}", err);
-            }
+            _ => {}
         }
     }
     Ok(td_ref)
 }
 
-pub fn search_file(pb: PathBuf) -> Result<File, Errors> {
-    // TODO make this an error
-    let content_bytes: Vec<u8> = fs::read(&pb).expect("Failed to read file");
+pub fn search_file(pb: PathBuf) -> Result<Option<File>, Errors> {
+    let m_content_bytes: Option<Vec<u8>> = fs::read(&pb).ok();
+
+    let content_bytes: Vec<u8>;
+    match m_content_bytes {
+        None => return Ok(None),
+        Some(b) => content_bytes = b,
+    }
 
     let linked = fs::read_link(&pb).ok().and_then(|target_path| {
         match std::env::var("HOME").ok() {
@@ -234,11 +238,8 @@ pub fn search_file(pb: PathBuf) -> Result<File, Errors> {
     };
 
     file.add_matches(content_bytes);
-    if file.lines.len() == 0 {
-        return Ok(file);
-    }
 
-    return Ok(file);
+    return Ok(Some(file));
 }
 
 fn get_name_as_string(path: &PathBuf) -> Result<String, Errors> {

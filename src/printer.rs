@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: Unlicense
 
-// TODO clean up these errors, make it io type and then
-// map it once in the main function
 use crate::formats::{self, BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
 use crate::searcher::{DirPointer, Directory, File, LineMatch};
 use crate::CONFIG;
@@ -113,11 +111,11 @@ where
         }
         print_line(out, line_match)?;
     }
-    new_line(out)?;
+    // new_line(out)?;
     Ok(())
 }
 
-fn write_file_name<W>(out: &mut W, file: &File) -> io::Result<()>
+pub fn write_file_name<W>(out: &mut W, file: &File) -> io::Result<()>
 where
     W: Write,
 {
