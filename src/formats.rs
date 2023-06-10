@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: Unlicense
 
 use crossterm::style::{
-    Attribute, Color, ResetColor, SetAttribute, SetBackgroundColor, SetForegroundColor,
-    StyledContent, Stylize,
+    Attribute, Color, ResetColor, SetAttribute, SetForegroundColor, StyledContent, Stylize,
 };
 
-pub const MENU_SELECTED: SetBackgroundColor = SetBackgroundColor(Color::DarkGrey);
-// pub const MENU_SELECTED: SetAttribute = SetAttribute(Attribute::);
+pub const MENU_SELECTED: Color = Color::DarkGrey;
 
 pub const RESET: SetAttribute = SetAttribute(Attribute::Reset);
 pub const RESET_COLOR: ResetColor = ResetColor;
