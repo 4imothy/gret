@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 pub enum Errors {
     PathNotFound { cause: PathBuf },
-    CantWrite,
+    IOError { cause: String },
     CantGetName { cause: PathBuf },
     InvalidRegex { cause: String },
     FailedToGetCWD,
@@ -25,8 +25,8 @@ impl fmt::Display for Errors {
                     cause.display()
                 )
             }
-            Errors::CantWrite => {
-                write!(f, "{}Can't print to Stdout", error_prefix)
+            Errors::IOError { cause } => {
+                write!(f, "{} IO Error: {}", error_prefix, cause)
             }
             Errors::CantGetName { cause } => {
                 write!(

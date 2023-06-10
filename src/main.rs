@@ -26,12 +26,16 @@ fn main() {
         let mut out = std::io::stdout().lock();
         if CONFIG.menu {
             menu::draw(&mut out, SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
-                println!("{e}");
-                exit_error(Errors::CantWrite);
+                exit_error(Errors::IOError {
+                    cause: e.to_string(),
+                });
             });
         } else {
-            start_print_directory(&mut out, &top_dir)
-                .unwrap_or_else(|_| exit_error(Errors::CantWrite));
+            start_print_directory(&mut out, &top_dir).unwrap_or_else(|e| {
+                exit_error(Errors::IOError {
+                    cause: e.to_string(),
+                })
+            });
         }
     } else {
         let m_file = searcher::search_file(CONFIG.path.clone()).unwrap_or_else(|e| exit_error(e));
@@ -39,12 +43,16 @@ fn main() {
             let mut out = std::io::stdout().lock();
             if CONFIG.menu {
                 menu::draw(&mut out, SearchedTypes::File(file)).unwrap_or_else(|e| {
-                    println!("{e}");
-                    exit_error(Errors::CantWrite);
+                    exit_error(Errors::IOError {
+                        cause: e.to_string(),
+                    });
                 });
             } else {
-                print_single_file(&mut out, &file)
-                    .unwrap_or_else(|_| exit_error(Errors::CantWrite));
+                print_single_file(&mut out, &file).unwrap_or_else(|e| {
+                    exit_error(Errors::IOError {
+                        cause: e.to_string(),
+                    });
+                });
             }
         }
     }
