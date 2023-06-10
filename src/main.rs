@@ -3,6 +3,7 @@
 mod command;
 mod formats;
 mod menu;
+use menu::SearchedTypes;
 mod printer;
 mod searcher;
 use printer::{print_single_file, start_print_directory};
@@ -24,7 +25,7 @@ fn main() {
             .unwrap_or_else(|e| exit_error(e));
         let mut out = std::io::stdout().lock();
         if CONFIG.menu {
-            menu::draw(&mut out, top_dir).unwrap_or_else(|e| {
+            menu::draw(&mut out, SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
                 println!("{e}");
                 exit_error(Errors::CantWrite);
             });
@@ -33,10 +34,18 @@ fn main() {
                 .unwrap_or_else(|_| exit_error(Errors::CantWrite));
         }
     } else {
-        let mut out = std::io::stdout().lock();
         let m_file = searcher::search_file(CONFIG.path.clone()).unwrap_or_else(|e| exit_error(e));
         if let Some(file) = m_file {
-            print_single_file(&mut out, &file).unwrap_or_else(|_| exit_error(Errors::CantWrite));
+            let mut out = std::io::stdout().lock();
+            if CONFIG.menu {
+                menu::draw(&mut out, SearchedTypes::File(file)).unwrap_or_else(|e| {
+                    println!("{e}");
+                    exit_error(Errors::CantWrite);
+                });
+            } else {
+                print_single_file(&mut out, &file)
+                    .unwrap_or_else(|_| exit_error(Errors::CantWrite));
+            }
         }
     }
 }

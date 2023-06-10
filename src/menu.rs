@@ -4,9 +4,9 @@ enter key or by pressing the letters/numbers on the
 left side of the match, open with $EDITOR
 */
 
-use crate::formats::MENU_SELECTED;
+use crate::formats;
 use crate::printer;
-use crate::searcher::DirPointer;
+use crate::searcher::{DirPointer, File};
 pub use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
@@ -19,9 +19,14 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
+pub enum SearchedTypes {
+    Dir(DirPointer),
+    File(File),
+}
+
 const SCROLL_OFFSET: usize = 5;
 
-pub fn draw<W>(out: &mut W, top_dir: DirPointer) -> io::Result<()>
+pub fn draw<W>(out: &mut W, searched: SearchedTypes) -> io::Result<()>
 where
     W: Write,
 {
@@ -29,25 +34,32 @@ where
         out,
         style::ResetColor,
         cursor::Hide,
-        terminal::EnterAlternateScreen
+        terminal::EnterAlternateScreen,
+        terminal::EnableLineWrap,
     )?;
-
     terminal::enable_raw_mode()?;
 
-    // first test with just highlighting different lines
     let mut buffer: Vec<u8> = Vec::new();
-    printer::start_print_directory(&mut buffer, &top_dir)?;
+    match &searched {
+        SearchedTypes::Dir(dir) => {
+            printer::start_print_directory(&mut buffer, &dir)?;
+        }
+        SearchedTypes::File(file) => {
+            printer::print_single_file(&mut buffer, &file)?;
+        }
+    }
+
+    // first test with just highlighting different lines
 
     let lines: Vec<String> = buffer
         .split(|&byte| byte == b'\n')
         .map(|vec| String::from_utf8_lossy(vec).into_owned())
         .collect();
-    draw_loop(out, lines, top_dir)?;
 
-    Ok(())
+    draw_loop(out, lines, searched)
 }
 
-fn draw_loop<W>(out: &mut W, lines: Vec<String>, top_dir: DirPointer) -> io::Result<()>
+fn draw_loop<W>(out: &mut W, lines: Vec<String>, searched: SearchedTypes) -> io::Result<()>
 where
     W: Write,
 {
@@ -55,7 +67,9 @@ where
     let max_selected_id = lines.len() - 1;
     // (columns, rows)
     let mut size: Option<(u16, u16)> = terminal::size().ok();
+    // - 1 on height because we start printing at (1,1)
     let mut max_prints: Option<usize> = size.map(|(_, height)| height as usize - 1);
+    // TODO make this an option tuple to clean up
     let mut window_start: Option<usize> = Some(0);
     let mut window_end: Option<usize> = match (window_start, max_prints) {
         (Some(start), Some(max)) => Some(start + max),
@@ -64,16 +78,20 @@ where
     'outer: loop {
         queue!(out, cursor::MoveTo(1, 1))?;
 
+        // selected % (max_prints + 1) tells the
+        // number lines down that selected is
+        // probably better to use the crossterm::ScrollUp But I
+        // am not sure how to implement that
         if let (Some(end), Some(start)) = (window_end, window_start) {
             if selected + SCROLL_OFFSET == end {
-                queue!(out, terminal::Clear(ClearType::All))?;
                 window_start = Some(start + 1);
                 window_end = Some(end + 1);
+                execute!(out, terminal::Clear(ClearType::All))?;
             }
             if selected + 1 > SCROLL_OFFSET && selected + 1 - SCROLL_OFFSET == start {
-                queue!(out, terminal::Clear(ClearType::All))?;
                 window_start = Some(start - 1);
                 window_end = Some(end - 1);
+                execute!(out, terminal::Clear(ClearType::All))?;
             }
         }
 
@@ -84,7 +102,7 @@ where
             .take(max_prints.unwrap_or(lines.len()))
         {
             if i == selected {
-                queue!(out, MENU_SELECTED)?;
+                queue!(out, formats::MENU_SELECTED)?;
             }
             queue!(out, Print(line), cursor::MoveToNextLine(1))?;
         }
@@ -121,7 +139,7 @@ where
                     _ => {}
                 },
                 KeyCode::Enter => {
-                    return find_selected_and_edit(out, selected, &top_dir);
+                    return find_selected_and_edit(out, selected, searched);
                 }
                 _ => {}
             }
@@ -146,12 +164,41 @@ where
     Ok(())
 }
 
-fn find_selected_and_edit<W>(out: &mut W, selected: usize, top_dir: &DirPointer) -> io::Result<()>
+fn find_selected_and_edit<W>(
+    out: &mut W,
+    selected: usize,
+    searched: SearchedTypes,
+) -> io::Result<()>
 where
     W: Write,
 {
     let mut current: usize = 0;
-    return handle_dir(out, selected, &mut current, top_dir);
+    match searched {
+        SearchedTypes::Dir(dir) => {
+            return handle_dir(out, selected, &mut current, &dir);
+        }
+        SearchedTypes::File(file) => {
+            return handle_file(out, selected, &mut current, &file);
+        }
+    }
+}
+
+fn handle_file<W>(out: &mut W, selected: usize, current: &mut usize, file: &File) -> io::Result<()>
+where
+    W: Write,
+{
+    if *current == selected {
+        call_editor_exit(out, &file.path, None)?;
+    }
+    *current += 1;
+    for line_match in file.lines.iter() {
+        if *current == selected {
+            call_editor_exit(out, &file.path, Some(line_match.line_num))?;
+        }
+        *current += 1;
+    }
+
+    Ok(())
 }
 
 fn handle_dir<W>(
@@ -199,10 +246,16 @@ fn call_editor_exit<W>(out: &mut W, path: &PathBuf, line_num: Option<usize>) -> 
 where
     W: Write,
 {
-    let opener: String;
     #[cfg(not(windows))]
     {
-        opener = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
+        let mut opener: String = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
+        // if the env var isn't set than use open on macos xdg-open on other
+        if opener.is_empty() {
+            opener = match std::env::consts::OS {
+                "macos" => "open".to_string(),
+                _ => "xdg-open".to_string(),
+            };
+        }
         let mut command: Command = Command::new(opener.clone());
         if let Some(l) = line_num {
             match opener.as_str() {
@@ -221,13 +274,16 @@ where
                     command.arg(path);
                 }
             }
-        };
+        } else {
+            command.arg(path);
+        }
 
         use std::os::unix::process::CommandExt;
         // don't leave alt screen here to avoid crash
         cleanup(out)?;
         command.exec();
     }
+
     #[cfg(windows)]
     {
         Command::new("cmd")
