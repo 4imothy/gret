@@ -233,7 +233,6 @@ where
             .arg(path)
             .spawn()?;
         cleanup(out)?;
-        leave_alt_screen(out)?;
     }
 
     Ok(())
