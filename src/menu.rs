@@ -76,7 +76,11 @@ where
                 cursor::MoveToNextLine(1)
             )?;
         } else {
-            queue!(out, Print(line), cursor::MoveToNextLine(1))?;
+            queue!(
+                out,
+                Print(" ".to_string() + line),
+                cursor::MoveToNextLine(1)
+            )?;
         }
     }
     out.flush()
