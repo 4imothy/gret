@@ -19,6 +19,8 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
+const SCROLL_OFFSET: usize = 5;
+
 pub fn draw<W>(out: &mut W, top_dir: DirPointer) -> io::Result<()>
 where
     W: Write,
@@ -49,33 +51,55 @@ fn draw_loop<W>(out: &mut W, lines: Vec<String>, top_dir: DirPointer) -> io::Res
 where
     W: Write,
 {
-    // this will cause errors if there are more than 2^(16)-1=65535 matches
-    let mut selected: u16 = 0;
-    let max_selected_id = lines.len() as u16 - 1;
-    let size: Option<(u16, u16)> = terminal::size().ok();
+    let mut selected: usize = 0;
+    let max_selected_id = lines.len() - 1;
+    // (columns, rows)
+    let mut size: Option<(u16, u16)> = terminal::size().ok();
+    let mut max_prints: Option<usize> = size.map(|(_, height)| height as usize - 1);
+    let mut window_start: Option<usize> = Some(0);
+    let mut window_end: Option<usize> = match (window_start, max_prints) {
+        (Some(start), Some(max)) => Some(start + max),
+        _ => None,
+    };
     'outer: loop {
-        if size.is_some() && size != terminal::size().ok() {
-            queue!(out, terminal::Clear(ClearType::All),)?;
+        queue!(out, cursor::MoveTo(1, 1))?;
+
+        if window_end.is_some() && selected + SCROLL_OFFSET == window_end.unwrap() {
+            queue!(out, terminal::Clear(ClearType::All))?;
+            window_start = window_start.map(|v| v + 1);
+            window_end = window_end.map(|v| v + 1);
+        }
+        if selected + 1 > SCROLL_OFFSET // to avoid unsigned overflow
+            && window_start.is_some()
+            && selected + 1 - SCROLL_OFFSET == window_start.unwrap()
+        {
+            queue!(out, terminal::Clear(ClearType::All))?;
+            window_start = window_start.map(|v| v - 1);
+            window_end = window_end.map(|v| v - 1);
         }
 
-        queue!(out, cursor::MoveTo(1, 1))?;
-        for (i, line) in lines.iter().enumerate() {
-            if i as u16 == selected {
-                // this only works until there is a style reset
+        for (i, line) in lines
+            .iter()
+            .enumerate()
+            .skip(window_start.unwrap_or(0))
+            .take(max_prints.unwrap_or(lines.len()))
+        {
+            if i == selected {
                 queue!(out, MENU_SELECTED)?;
             }
-            queue!(out, Print(line))?;
-            queue!(out, cursor::MoveToNextLine(1))?;
+            queue!(out, Print(line), cursor::MoveToNextLine(1))?;
         }
 
         out.flush()?;
+
+        let event = event::read();
 
         if let Ok(Event::Key(KeyEvent {
             code,
             modifiers,
             kind: crossterm::event::KeyEventKind::Press,
             ..
-        })) = event::read()
+        })) = event
         {
             match code {
                 KeyCode::Char(c) => match c {
@@ -102,6 +126,12 @@ where
                 }
                 _ => {}
             }
+        } else if let Ok(Event::Resize(cols, rows)) = event {
+            if size.is_some() && size != terminal::size().ok() {
+                queue!(out, terminal::Clear(ClearType::All))?;
+                size = Some((cols, rows));
+                max_prints = size.map(|(_, height)| height as usize);
+            }
         }
     }
 
@@ -109,20 +139,24 @@ where
     // when an error occurs above still call
     // these cleanup functions
     cleanup(out)?;
-    leave_alt_screen(out)?;
 
     Ok(())
 }
 
-fn find_selected_and_edit<W>(out: &mut W, selected: u16, top_dir: &DirPointer) -> io::Result<()>
+fn find_selected_and_edit<W>(out: &mut W, selected: usize, top_dir: &DirPointer) -> io::Result<()>
 where
     W: Write,
 {
-    let mut current: u16 = 0;
+    let mut current: usize = 0;
     return handle_dir(out, selected, &mut current, top_dir);
 }
 
-fn handle_dir<W>(out: &mut W, selected: u16, current: &mut u16, dir: &DirPointer) -> io::Result<()>
+fn handle_dir<W>(
+    out: &mut W,
+    selected: usize,
+    current: &mut usize,
+    dir: &DirPointer,
+) -> io::Result<()>
 where
     W: Write,
 {
@@ -166,26 +200,30 @@ where
     #[cfg(not(windows))]
     {
         opener = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
-    }
-    #[cfg(windows)]
-    {
-        opener = "start".to_string();
-    }
-    let mut args: Vec<String> = Vec::new();
-    if let Some(l) = line_num {
-        match opener.as_str() {
-            "vi" | "vim" | "nvim" | "nano" => args.push(format!("+{}", l)),
-            "code" => args.push(format!("--goto file:{}", l)),
-            _ => {}
-        }
-    };
+        let mut command: Command = Command::new(opener.clone());
+        if let Some(l) = line_num {
+            match opener.as_str() {
+                "vi" | "vim" | "nvim" | "nano" => {
+                    command.arg(format!("+{l}"));
+                    command.arg(path);
+                }
+                "code" => {
+                    command.arg("--goto");
+                    let mut arg: std::ffi::OsString = path.as_os_str().to_os_string();
+                    arg.push(":");
+                    arg.push(l.to_string());
+                    command.arg(arg);
+                }
+                _ => {
+                    command.arg(path);
+                }
+            }
+        };
 
-    #[cfg(not(windows))]
-    {
         use std::os::unix::process::CommandExt;
         // don't leave alt screen here to avoid crash
         cleanup(out)?;
-        Command::new(opener).arg(path).args(args).exec();
+        command.exec();
     }
     #[cfg(windows)]
     {
@@ -193,7 +231,6 @@ where
             .arg("/C")
             .arg("start")
             .arg(path)
-            .args(args)
             .spawn()?;
         cleanup(out)?;
         leave_alt_screen(out)?;
@@ -206,19 +243,14 @@ fn cleanup<W>(out: &mut W) -> io::Result<()>
 where
     W: Write,
 {
+    // don't leave alt screen here to avoid flashing the
+    // normal shell screen
     terminal::disable_raw_mode()?;
     execute!(
         out,
         style::ResetColor,
         cursor::SetCursorStyle::DefaultUserShape,
+        terminal::LeaveAlternateScreen, // this will flash the normal prompt
         cursor::Show,
-    )?;
-    Ok(())
-}
-
-fn leave_alt_screen<W>(out: &mut W) -> io::Result<()>
-where
-    W: Write,
-{
-    execute!(out, terminal::LeaveAlternateScreen)
+    )
 }
