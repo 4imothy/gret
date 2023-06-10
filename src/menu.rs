@@ -131,6 +131,10 @@ where
                 queue!(out, terminal::Clear(ClearType::All))?;
                 size = Some((cols, rows));
                 max_prints = size.map(|(_, height)| height as usize);
+                window_end = match (window_start, max_prints) {
+                    (Some(start), Some(max)) => Some(start + max),
+                    _ => None,
+                };
             }
         }
     }
