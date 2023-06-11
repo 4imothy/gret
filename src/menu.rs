@@ -290,7 +290,7 @@ where
 {
     #[cfg(not(windows))]
     {
-        let mut opener: String = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
+        let mut opener: String = std::env::var("EDITOR").unwrap_or("".to_string());
         // if the env var isn't set than use open on macos xdg-open on other
         if opener.is_empty() {
             opener = match std::env::consts::OS {
