@@ -305,6 +305,12 @@ where
                     command.arg(format!("+{l}"));
                     command.arg(path);
                 }
+                "hx" => {
+                    let mut arg: std::ffi::OsString = path.as_os_str().to_os_string();
+                    arg.push(":");
+                    arg.push(l.to_string());
+                    command.arg(arg);
+                }
                 "code" => {
                     command.arg("--goto");
                     let mut arg: std::ffi::OsString = path.as_os_str().to_os_string();
