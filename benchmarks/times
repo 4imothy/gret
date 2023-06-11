@@ -24,3 +24,16 @@ grep execution time: 33.00839877128601 seconds
 gret execution time: 6.301403284072876 seconds
 
 ------------------
+Benchmark Results - 2023-06-11
+
+Results for directory: benchmarks/targets/eng_subs/en.txt
+rg execution time: 5.340728044509888 seconds
+grep execution time: 207.9721610546112 seconds
+gret execution time: 63.010955810546875 seconds
+
+Results for directory: benchmarks/targets/linux
+rg execution time: 2.358120918273926 seconds
+grep execution time: 42.99978423118591 seconds
+gret execution time: 8.776600122451782 seconds
+
+------------------
