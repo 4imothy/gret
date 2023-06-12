@@ -290,14 +290,15 @@ where
 {
     #[cfg(not(windows))]
     {
-        let mut opener: String = std::env::var("EDITOR").unwrap_or("".to_string());
         // if the env var isn't set than use open on macos xdg-open on other
-        if opener.is_empty() {
-            opener = match std::env::consts::OS {
+        let opener = match std::env::var("EDITOR") {
+            Ok(val) if !val.is_empty() => val,
+            _ => match std::env::consts::OS {
                 "macos" => "open".to_string(),
                 _ => "xdg-open".to_string(),
-            };
-        }
+            },
+        };
+
         let mut command: Command = Command::new(opener.clone());
         if let Some(l) = line_num {
             match opener.as_str() {
