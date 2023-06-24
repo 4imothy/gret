@@ -294,7 +294,7 @@ where
         let mut command: Command = Command::new(opener.clone());
         if let Some(l) = line_num {
             match opener.as_str() {
-                "vi" | "vim" | "nvim" | "nano" => {
+                "vi" | "vim" | "nvim" | "nano" | "emacs" => {
                     command.arg(format!("+{l}"));
                     command.arg(path);
                 }
