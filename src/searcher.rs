@@ -43,6 +43,11 @@ pub struct File {
     pub path: PathBuf,
 }
 
+pub enum SearchedTypes {
+    Dir(DirPointer),
+    File(File),
+}
+
 pub struct Match {
     pub matcher_id: usize,
     pub start: usize,
@@ -81,6 +86,7 @@ impl SliceExt for [u8] {
         }
     }
 }
+
 impl File {
     fn add_matches(&mut self, contents: Vec<u8>) {
         // check if it is a binary file
