@@ -7,6 +7,7 @@ left side of the match, open with $EDITOR
 use crate::formats;
 use crate::printer::write_results;
 use crate::searcher::{DirPointer, File, SearchedTypes};
+use crate::CONFIG;
 pub use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
@@ -38,8 +39,7 @@ where
     terminal::enable_raw_mode()?;
 
     let mut buffer: Vec<u8> = Vec::new();
-    let mut results: Vec<SearchedTypes> = Vec::new();
-    write_results(&mut buffer, &searched, &mut results)?;
+    write_results(&mut buffer, &searched)?;
     let lines: Vec<String> = buffer
         .split(|&byte| byte == b'\n')
         .map(|vec| String::from_utf8_lossy(vec).into_owned())
@@ -203,6 +203,9 @@ fn find_selected_and_edit<W>(
 where
     W: Write,
 {
+    if CONFIG.just_files {
+        return find_selected_just_files(out, selected, searched);
+    }
     let mut current: usize = 0;
     match searched {
         SearchedTypes::Dir(dir) => {
@@ -330,6 +333,50 @@ where
             .arg(path)
             .spawn()?;
         cleanup(out)?;
+    }
+
+    Ok(())
+}
+
+fn find_selected_just_files<W>(
+    out: &mut W,
+    selected: usize,
+    searched: SearchedTypes,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    let mut current: usize = 0;
+    match &searched {
+        SearchedTypes::Dir(dir) => {
+            return handle_dir_just_files(out, selected, &mut current, dir);
+        }
+        SearchedTypes::File(file) => {
+            return call_editor_exit(out, &file.path, None);
+        }
+    }
+}
+
+fn handle_dir_just_files<W>(
+    out: &mut W,
+    selected: usize,
+    current: &mut usize,
+    dir_ptr: &DirPointer,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    let dir = dir_ptr.borrow();
+    let children = &dir.children;
+    let files = &dir.found_files;
+    for child in children {
+        handle_dir_just_files(out, selected, current, &child)?;
+    }
+    for file in files {
+        if *current == selected {
+            return call_editor_exit(out, &file.path, None);
+        }
+        *current += 1;
     }
 
     Ok(())
