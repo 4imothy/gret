@@ -36,6 +36,8 @@ Register-ArgumentCompleter -Native -CommandName 'gret' -ScriptBlock {
             [CompletionResult]::new('--line_number', 'line_number', [CompletionResultType]::ParameterName, 'if this option is present show the line number of the matched text')
             [CompletionResult]::new('-m', 'm', [CompletionResultType]::ParameterName, 'if this arg is present gret will show matches in a menu to be selected from')
             [CompletionResult]::new('--menu', 'menu', [CompletionResultType]::ParameterName, 'if this arg is present gret will show matches in a menu to be selected from')
+            [CompletionResult]::new('-f', 'f', [CompletionResultType]::ParameterName, 'if this arg is present just print out the file names of matches')
+            [CompletionResult]::new('--files', 'files', [CompletionResultType]::ParameterName, 'if this arg is present just print out the file names of matches')
             [CompletionResult]::new('-h', 'h', [CompletionResultType]::ParameterName, 'Print help')
             [CompletionResult]::new('--help', 'help', [CompletionResultType]::ParameterName, 'Print help')
             break

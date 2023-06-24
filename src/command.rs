@@ -71,6 +71,12 @@ fn get_options() -> Vec<Arg> {
             .value_name("Open a selection menu")
             .help("if this arg is present gret will show matches in a menu to be selected from")
             .action(ArgAction::SetTrue),
+        Arg::new("just_files")
+            .long("files")
+            .short('f')
+            .value_name("Just print files")
+            .help("if this arg is present just print out the file names of matches")
+            .action(ArgAction::SetTrue),
     ]
 }
 

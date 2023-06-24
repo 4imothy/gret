@@ -9,14 +9,16 @@ use std::path::PathBuf;
 
 pub struct Config {
     pub path: PathBuf,
-    pub is_dir: bool,
-    pub styled: bool,
     pub patterns: Vec<Regex>,
+    pub max_depth: Option<usize>,
     pub show_count: bool,
     pub search_hidden: bool,
-    pub max_depth: Option<usize>,
     pub show_line_number: bool,
     pub menu: bool,
+    pub is_dir: bool,
+    pub styled: bool,
+    pub just_files: bool,
+    // settings not set by command line arguments
     pub terminator: String,
     pub reset: String,
 }
@@ -53,6 +55,7 @@ pub fn parse_args() -> Result<Config, Errors> {
     let search_hidden: bool = *matches.get_one::<bool>("search_hidden").unwrap();
     let show_line_number: bool = *matches.get_one::<bool>("line_number").unwrap();
     let menu: bool = *matches.get_one::<bool>("menu").unwrap();
+    let just_files: bool = *matches.get_one::<bool>("just_files").unwrap();
 
     let max_depth_str: Option<&String> = matches.get_one::<String>("max_depth");
 
@@ -95,5 +98,6 @@ pub fn parse_args() -> Result<Config, Errors> {
         menu,
         terminator,
         reset,
+        just_files,
     })
 }

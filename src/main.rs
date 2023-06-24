@@ -3,10 +3,10 @@
 mod command;
 mod formats;
 mod menu;
-use menu::SearchedTypes;
 mod printer;
+use printer::write_results;
 mod searcher;
-use printer::{print_single_file, start_print_directory};
+use searcher::SearchedTypes;
 mod args;
 use args::{parse_args, Config};
 mod errors;
@@ -25,13 +25,16 @@ fn main() {
             .unwrap_or_else(|e| exit_error(e));
         let mut out = std::io::stdout().lock();
         if CONFIG.menu {
-            menu::draw(&mut out, SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
-                exit_error(Errors::IOError {
-                    cause: e.to_string(),
+            // only open the cli if there were matches
+            if top_dir.borrow().children.len() > 0 || top_dir.borrow().found_files.len() > 0 {
+                menu::draw(&mut out, SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
+                    exit_error(Errors::IOError {
+                        cause: e.to_string(),
+                    });
                 });
-            });
+            }
         } else {
-            start_print_directory(&mut out, &top_dir).unwrap_or_else(|e| {
+            write_results(&mut out, &SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
                 exit_error(Errors::IOError {
                     cause: e.to_string(),
                 })
@@ -42,13 +45,16 @@ fn main() {
         if let Some(file) = m_file {
             let mut out = std::io::stdout().lock();
             if CONFIG.menu {
-                menu::draw(&mut out, SearchedTypes::File(file)).unwrap_or_else(|e| {
-                    exit_error(Errors::IOError {
-                        cause: e.to_string(),
+                // only open the cli if there were matches
+                if file.lines.len() > 0 {
+                    menu::draw(&mut out, SearchedTypes::File(file)).unwrap_or_else(|e| {
+                        exit_error(Errors::IOError {
+                            cause: e.to_string(),
+                        });
                     });
-                });
+                }
             } else {
-                print_single_file(&mut out, &file).unwrap_or_else(|e| {
+                write_results(&mut out, &SearchedTypes::File(file)).unwrap_or_else(|e| {
                     exit_error(Errors::IOError {
                         cause: e.to_string(),
                     });

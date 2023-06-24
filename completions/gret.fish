@@ -6,4 +6,5 @@ complete -c gret -s c -l show_count -d 'if this option is present, display numbe
 complete -c gret -s a -l hidden -d 'if this option is present gret will search hidden files'
 complete -c gret -s l -l line_number -d 'if this option is present show the line number of the matched text'
 complete -c gret -s m -l menu -d 'if this arg is present gret will show matches in a menu to be selected from'
+complete -c gret -s f -l files -d 'if this arg is present just print out the file names of matches'
 complete -c gret -s h -l help -d 'Print help'
