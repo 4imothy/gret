@@ -14,7 +14,7 @@ where
             return write_files(out, dir);
         }
         SearchedTypes::File(file) => {
-            return print_single_file(out, &file);
+            return write_file_path(out, file);
         }
     }
 }
@@ -66,11 +66,7 @@ where
     Ok(())
 }
 
-pub fn write_results<W>(
-    out: &mut W,
-    result: &SearchedTypes,
-    results: &mut Vec<SearchedTypes>,
-) -> io::Result<()>
+pub fn write_results<W>(out: &mut W, result: &SearchedTypes) -> io::Result<()>
 where
     W: Write,
 {
