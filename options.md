@@ -8,3 +8,4 @@
 | *-a/--hidden* | If present, search hidden files |
 | *-l/--line_number* |If present, display the line number of the matched text|
 | *--max_depth* | The max depth the searcher will go |
+| *-f/--files* | Only show the paths of matched files and nothing else |
