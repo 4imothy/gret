@@ -25,11 +25,13 @@ fn main() {
             .unwrap_or_else(|e| exit_error(e));
         let mut out = std::io::stdout().lock();
         if CONFIG.menu {
-            menu::draw(&mut out, SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
-                exit_error(Errors::IOError {
-                    cause: e.to_string(),
+            if top_dir.borrow().children.len() > 0 || top_dir.borrow().found_files.len() > 0 {
+                menu::draw(&mut out, SearchedTypes::Dir(top_dir)).unwrap_or_else(|e| {
+                    exit_error(Errors::IOError {
+                        cause: e.to_string(),
+                    });
                 });
-            });
+            }
         } else {
             start_print_directory(&mut out, &top_dir).unwrap_or_else(|e| {
                 exit_error(Errors::IOError {
@@ -42,11 +44,13 @@ fn main() {
         if let Some(file) = m_file {
             let mut out = std::io::stdout().lock();
             if CONFIG.menu {
-                menu::draw(&mut out, SearchedTypes::File(file)).unwrap_or_else(|e| {
-                    exit_error(Errors::IOError {
-                        cause: e.to_string(),
+                if file.lines.len() > 0 {
+                    menu::draw(&mut out, SearchedTypes::File(file)).unwrap_or_else(|e| {
+                        exit_error(Errors::IOError {
+                            cause: e.to_string(),
+                        });
                     });
-                });
+                }
             } else {
                 print_single_file(&mut out, &file).unwrap_or_else(|e| {
                     exit_error(Errors::IOError {

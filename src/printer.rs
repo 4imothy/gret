@@ -12,7 +12,6 @@ where
     // prefix starts at nothing when at the top level
     let prefix = "".to_string();
     let dir = dir_ptr.borrow();
-    write_dir_name(out, &dir)?;
 
     handle_descendants(out, dir, prefix)?;
 
@@ -30,19 +29,20 @@ where
     let children = &dir.children;
     let files = &dir.found_files;
     let flen = files.len();
-    let mut i: usize = 0;
     let clen = children.len();
+    if clen > 0 || flen > 0 {
+        write_dir_name(out, &dir)?;
+    }
+    let mut i: usize = 0;
     for child in children {
         i += 1;
         // check if it has a next file
         let dir = child.borrow();
         if i != clen || flen > 0 {
             write!(out, "{}{}", prefix, BRANCH_HAS_NEXT)?;
-            write_dir_name(out, &dir)?;
             handle_descendants(out, dir, (prefix.clone() + VER_LINE_SPACER).clone())?;
         } else {
             write!(out, "{}{}", prefix, BRANCH_END)?;
-            write_dir_name(out, &dir)?;
             handle_descendants(out, dir, (prefix.clone() + SPACER).clone())?;
         }
     }
@@ -98,9 +98,10 @@ pub fn print_single_file<W>(out: &mut W, file: &File) -> io::Result<()>
 where
     W: Write,
 {
-    write_file_name(out, &file)?;
-
     let len = file.lines.len();
+    if len > 0 {
+        write_file_name(out, &file)?;
+    }
     let mut i = 0;
     for line_match in file.lines.iter() {
         i += 1;
