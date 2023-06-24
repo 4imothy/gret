@@ -33,6 +33,8 @@ set edit:completion:arg-completer[gret] = {|@words|
             cand --line_number 'if this option is present show the line number of the matched text'
             cand -m 'if this arg is present gret will show matches in a menu to be selected from'
             cand --menu 'if this arg is present gret will show matches in a menu to be selected from'
+            cand -f 'if this arg is present just print out the file names of matches'
+            cand --files 'if this arg is present just print out the file names of matches'
             cand -h 'Print help'
             cand --help 'Print help'
         }

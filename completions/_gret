@@ -30,6 +30,8 @@ _gret() {
 '--line_number[if this option is present show the line number of the matched text]' \
 '-m[if this arg is present gret will show matches in a menu to be selected from]' \
 '--menu[if this arg is present gret will show matches in a menu to be selected from]' \
+'-f[if this arg is present just print out the file names of matches]' \
+'--files[if this arg is present just print out the file names of matches]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '::expression_pos -- specify the regex expression:' \
