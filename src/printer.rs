@@ -1,15 +1,98 @@
 // SPDX-License-Identifier: Unlicense
 
 use crate::formats::{self, BRANCH_END, BRANCH_HAS_NEXT, SPACER, VER_LINE_SPACER};
-use crate::searcher::{DirPointer, Directory, File, LineMatch};
+use crate::searcher::{DirPointer, Directory, File, LineMatch, SearchedTypes};
 use crate::CONFIG;
 use std::io::{self, Write};
 
-pub fn start_print_directory<W>(out: &mut W, dir_ptr: &DirPointer) -> io::Result<()>
+fn just_write_files<W>(out: &mut W, result: &SearchedTypes) -> io::Result<()>
 where
     W: Write,
 {
-    // prefix starts at nothing when at the top level
+    match &result {
+        SearchedTypes::Dir(dir) => {
+            return write_files(out, dir);
+        }
+        SearchedTypes::File(file) => {
+            return print_single_file(out, &file);
+        }
+    }
+}
+
+fn write_files<W>(out: &mut W, dir_ptr: &DirPointer) -> io::Result<()>
+where
+    W: Write,
+{
+    let dir = dir_ptr.borrow();
+    let children = &dir.children;
+    let files = &dir.found_files;
+    for child in children {
+        write_files(out, child)?;
+    }
+    for file in files {
+        write_file_path(out, file)?;
+    }
+    Ok(())
+}
+
+fn write_file_path<W>(out: &mut W, file: &File) -> io::Result<()>
+where
+    W: Write,
+{
+    let path: &str = &file.path.to_string_lossy();
+    if let Some(linked) = &file.linked {
+        if CONFIG.styled {
+            write!(out, "{} -> ", formats::file_name(path))?;
+        } else {
+            write!(out, "{} -> ", path)?
+        }
+        if CONFIG.styled {
+            write!(out, "{}", formats::file_name(&linked.to_string_lossy()))?;
+        } else {
+            write!(out, "{}", linked.to_string_lossy())?;
+        }
+    } else {
+        if CONFIG.styled {
+            write!(out, "{}", formats::file_name(path))?;
+        } else {
+            write!(out, "{}", path)?;
+        }
+    }
+    if CONFIG.show_count {
+        write!(out, ": {}", file.lines.len())?;
+    }
+    new_line(out)?;
+
+    Ok(())
+}
+
+pub fn write_results<W>(
+    out: &mut W,
+    result: &SearchedTypes,
+    results: &mut Vec<SearchedTypes>,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    if CONFIG.just_files {
+        return just_write_files(out, result);
+    }
+    match &result {
+        SearchedTypes::Dir(dir) => {
+            start_print_directory(out, &dir)?;
+        }
+        SearchedTypes::File(file) => {
+            print_single_file(out, &file)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn start_print_directory<W>(out: &mut W, dir_ptr: &DirPointer) -> io::Result<()>
+where
+    W: Write,
+{
     let prefix = "".to_string();
     let dir = dir_ptr.borrow();
 
@@ -94,7 +177,7 @@ where
     Ok(())
 }
 
-pub fn print_single_file<W>(out: &mut W, file: &File) -> io::Result<()>
+fn print_single_file<W>(out: &mut W, file: &File) -> io::Result<()>
 where
     W: Write,
 {
