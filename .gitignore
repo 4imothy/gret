@@ -3,3 +3,4 @@ target
 benchmarks/targets
 src_with_grep
 src_copy
+resources/youtube_demo.mov
