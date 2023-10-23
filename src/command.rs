@@ -12,11 +12,11 @@ matches in a tree.
 "
     .to_string();
     static ref HELP: String = "{name}
-by {{author}}
-{{about}} 
-{{usage}}
+by {author}
+{about}
+{usage}
 
-{{all-args}}"
+{all-args}"
         .to_string();
 }
 
