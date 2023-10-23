@@ -1,5 +1,3 @@
-### TODO
-
 #### Bugs
 - Completions on zsh (at least) display two rows of what is to be set, should just show one
 - On highlighting for the menu had to overwrite the default fg to be white so that the background styling wouldn't disappear after a `RESET_COLOR` was called

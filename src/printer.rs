@@ -249,6 +249,9 @@ where
     // let line: &[u8] = &line_match.contents;
     let line_num = line_match.line_num;
     if !CONFIG.styled {
+        if CONFIG.show_line_number {
+            write!(out, "{}: ", line_num)?;
+        }
         write!(out, "{}", String::from_utf8_lossy(&line).trim())?;
         return Ok(());
     }
@@ -257,7 +260,7 @@ where
         if CONFIG.styled {
             write!(out, "{}{}", formats::LINE_NUMBER_FG, formats::BOLD)?;
         }
-        write!(out, "{}", line_num)?;
+        write!(out, "{}: ", line_num)?;
         if CONFIG.styled {
             write_resets(out)?;
         }
