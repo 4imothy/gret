@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: Unlicense
 
+// TODO update all the crates
+// TODO this is possible without breaking the
+// borrow checker, maybe store a list
+// of all elements with indices
+
 mod command;
 mod formats;
 mod menu;
