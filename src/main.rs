@@ -7,8 +7,7 @@
 // of all elements with indices
 // also shows the files hidden by git
 // TODO Put the tui in a seperate screen so it is susbendable
-// TODO Completions on zsh (at least) display two
-// rows of what is to be set, should just show one
+// TODO fix completions
 // TODO On highlighting for the menu had to overwrite the default
 // fg to be white so that the background styling wouldn't
 // disappear after a `RESET_COLOR` was called
