@@ -1,9 +1,21 @@
 // SPDX-License-Identifier: Unlicense
 
+// TODO the hidden option is broken, that
 // TODO update all the crates
 // TODO this is possible without breaking the
 // borrow checker, maybe store a list
 // of all elements with indices
+// also shows the files hidden by git
+// TODO Put the tui in a seperate screen so it is susbendable
+// TODO Completions on zsh (at least) display two
+// rows of what is to be set, should just show one
+// TODO On highlighting for the menu had to overwrite the default
+// fg to be white so that the background styling wouldn't
+// disappear after a `RESET_COLOR` was called
+// TODO Weird printing of overlapping lines, sometimes when resizing
+// TODO Make reading a file faster
+// TODO Make a side bar for the menu that has numbers/letters corresponding with each row if one of those keys is pressed than enter that file
+// TODO Make work for stdin, not sure how to work with branching
 
 mod command;
 mod formats;
