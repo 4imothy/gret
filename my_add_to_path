@@ -1,0 +1,14 @@
+#!/bin/sh
+cargo build --release
+# make this something in your path
+ln -sf $(pwd)/target/release/gret ~/bin/gret
+
+# Determine the type of shell
+SHELL_NAME=$(basename "$SHELL")
+
+# Source the corresponding completion file
+case "$SHELL_NAME" in
+    "zsh")
+        ln -sf $(pwd)/completions/_gret $ZDOTDIR/completions/_gret
+        ;;
+esac
