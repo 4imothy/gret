@@ -23,17 +23,7 @@ pub fn draw<W>(out: &mut W, searched: SearchedTypes) -> io::Result<()>
 where
     W: Write,
 {
-    execute!(
-        out,
-        style::ResetColor,
-        cursor::Hide,
-        terminal::EnterAlternateScreen,
-        // line wrapping causes issues with cursor y being off
-        // from where it should be
-        terminal::DisableLineWrap,
-    )?;
-    terminal::enable_raw_mode()?;
-
+    enter(out)?;
     let mut buffer: Vec<u8> = Vec::new();
     write_results(&mut buffer, &searched)?;
     let lines: Vec<String> = buffer
@@ -50,7 +40,7 @@ where
 {
     #[cfg(not(windows))]
     {
-        cleanup(out)?;
+        leave(out)?;
         signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
     }
     Ok(())
@@ -76,8 +66,7 @@ where
                 lines.len() as u16
             }
         });
-    terminal::enable_raw_mode()?;
-    execute!(out, terminal::EnterAlternateScreen, cursor::Hide,)?;
+    enter(out)?;
     redraw(out, *max_prints, &lines, selected, cursor_y)?;
     Ok(())
 }
@@ -175,7 +164,7 @@ where
     // TODO make a leave function so that
     // when an error occurs above still call
     // these cleanup functions
-    cleanup(out)?;
+    leave(out)?;
 
     Ok(())
 }
@@ -276,6 +265,7 @@ where
     execute!(out, cursor::MoveTo(START_X, cursor_y), Print(line))
 }
 
+// this logic should be easy with doing both just_files and directories
 fn find_selected_and_edit<W>(
     out: &mut W,
     selected: usize,
@@ -384,7 +374,7 @@ where
         }
 
         use std::os::unix::process::CommandExt;
-        cleanup(out)?;
+        leave(out)?;
         command.exec();
     }
 
@@ -395,7 +385,7 @@ where
             .arg("start")
             .arg(path)
             .spawn()?;
-        cleanup(out)?;
+        leave(out)?;
     }
 
     Ok(())
@@ -445,7 +435,23 @@ where
     Ok(())
 }
 
-fn cleanup<W>(out: &mut W) -> io::Result<()>
+fn enter<W>(out: &mut W) -> io::Result<()>
+where
+    W: Write,
+{
+    execute!(
+        out,
+        style::ResetColor,
+        cursor::Hide,
+        terminal::EnterAlternateScreen,
+        // line wrapping causes issues with cursor y being off
+        // from where it should be
+        terminal::DisableLineWrap,
+    )?;
+    terminal::enable_raw_mode()
+}
+
+fn leave<W>(out: &mut W) -> io::Result<()>
 where
     W: Write,
 {
