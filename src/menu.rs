@@ -50,15 +50,35 @@ where
 {
     #[cfg(not(windows))]
     {
-        out.flush()?;
-        terminal::disable_raw_mode()?;
-        execute!(
-            std::io::stderr(),
-            terminal::LeaveAlternateScreen,
-            cursor::Show
-        )?;
+        cleanup(out)?;
         signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
     }
+    Ok(())
+}
+
+fn resume<W>(
+    out: &mut W,
+    max_prints: &mut u16,
+    selected: &mut usize,
+    cursor_y: &mut u16,
+    lines: &Vec<String>,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    *max_prints = terminal::size()
+        .ok()
+        .map(|(_, height)| height)
+        .unwrap_or_else(|| {
+            if lines.len() > i16::max_value() as usize {
+                u16::max_value()
+            } else {
+                lines.len() as u16
+            }
+        });
+    terminal::enable_raw_mode()?;
+    execute!(out, terminal::EnterAlternateScreen, cursor::Hide,)?;
+    redraw(out, *max_prints, &lines, selected, cursor_y)?;
     Ok(())
 }
 
@@ -134,19 +154,7 @@ where
                     'z' => {
                         if modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                             suspend(out)?;
-                            max_prints = terminal::size()
-                                .ok()
-                                .map(|(_, height)| height)
-                                .unwrap_or_else(|| {
-                                    if lines.len() > i16::max_value() as usize {
-                                        u16::max_value()
-                                    } else {
-                                        lines.len() as u16
-                                    }
-                                });
-                            terminal::enable_raw_mode()?;
-                            execute!(out, terminal::EnterAlternateScreen)?;
-                            redraw(out, max_prints, &lines, &mut selected, &mut cursor_y)?;
+                            resume(out, &mut max_prints, &mut selected, &mut cursor_y, &lines)?;
                         }
                     }
                     _ => {}
@@ -442,8 +450,9 @@ where
     W: Write,
 {
     terminal::disable_raw_mode()?;
+    out.flush()?;
     execute!(
-        out,
+        io::stderr(),
         style::ResetColor,
         cursor::SetCursorStyle::DefaultUserShape,
         terminal::LeaveAlternateScreen,
