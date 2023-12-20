@@ -133,6 +133,7 @@ where
                     }
                     'z' => {
                         if modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                            suspend(out)?;
                             max_prints = terminal::size()
                                 .ok()
                                 .map(|(_, height)| height)
@@ -143,7 +144,6 @@ where
                                         lines.len() as u16
                                     }
                                 });
-                            suspend(out)?;
                             terminal::enable_raw_mode()?;
                             execute!(out, terminal::EnterAlternateScreen)?;
                             redraw(out, max_prints, &lines, &mut selected, &mut cursor_y)?;
