@@ -3,7 +3,7 @@ name = "gret"
 version = "0.1.2"
 edition = "2021"
 build = "build.rs"
-license = "Unlicense"
+license = "CC-BY-4.0"
 repository = "https://github.com/4imothy/gret"
 homepage = "https://github.com/4imothy/gret"
 keywords = ["regex", "grep", "ripgrep", "search", "pattern"]
@@ -18,13 +18,14 @@ path = "src/main.rs"
 name = "gret"
 
 [dependencies]
-ignore = "0.4.20"
-regex = "1.8.3"
+ignore = "0.4.21"
+regex = "1.10.2"
 lazy_static = "1.4.0"
-clap = "4.3.0"
+clap = "4.4.11"
 memchr = "2.5.0"
 atty = "0.2.14"
-crossterm = "0.26.1"
+crossterm = "0.27.0"
+signal-hook = "0.3.17"
 
 [build-dependencies]
 clap = "4.3.0"

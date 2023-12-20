@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: CC-BY-4.0
 
 use crossterm::style::{
     Attribute, Color, ResetColor, SetAttribute, SetForegroundColor, StyledContent, Stylize,

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: CC-BY-4.0
+
 use clap::ValueEnum;
 use clap_complete::{generate_to, Shell};
 use std::env;

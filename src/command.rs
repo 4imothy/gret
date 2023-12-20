@@ -1,29 +1,25 @@
+// SPDX-License-Identifier: CC-BY-4.0
+
 use clap::{Arg, ArgAction, ArgGroup, Command, ValueHint};
-use lazy_static::lazy_static;
 
+const NAME: &str = "gret";
 const AUTHORS: &str = "Timothy Cronin";
-
-lazy_static! {
-    static ref ABOUT: String = "
-gret (global regular expression tree) is a command
+const ABOUT: &str = "gret (global regular expression tree) is a command
 line tool that searches a directory or file
 for a matching regex expression and displays
 matches in a tree.
-"
-    .to_string();
-    static ref HELP: String = "{name}
+";
+const HELP: &str = "{name}
 by {author}
 {about}
 {usage}
 
-{all-args}"
-        .to_string();
-}
+{all-args}";
 
 pub fn generate_command() -> Command {
-    let mut command = Command::new("todo")
+    let mut command = Command::new(NAME)
         .author(AUTHORS)
-        .about(ABOUT.to_owned())
+        .about(ABOUT)
         .help_template(HELP.to_owned());
 
     command = add_expr_group(command);

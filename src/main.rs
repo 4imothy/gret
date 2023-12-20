@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: CC-BY-4.0
 
-// TODO the hidden option is broken, that
-// TODO update all the crates
+// TODO change the hidden option to still not searh .git directory i think or make that a seperate
+// option, --hidden or -h to show . and -a or --all to search all files
+// TODO don't think there is a use case to search .git along with other files
 // TODO this is possible without breaking the
 // borrow checker, maybe store a list
 // of all elements with indices
