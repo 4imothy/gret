@@ -1,8 +1,4 @@
-/*
-user selects a line from a file with j,k and then
-enter key or by pressing the letters/numbers on the
-left side of the match, open with $EDITOR
-*/
+// SPDX-License-Identifier: CC-BY-4.0
 
 use crate::formats;
 use crate::printer::write_results;
@@ -14,14 +10,14 @@ pub use crossterm::{
     execute, queue,
     style::{self, Attribute, Color, Print, Stylize},
     terminal::{self, ClearType},
-    ErrorKind,
 };
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
 const SCROLL_OFFSET: u16 = 5;
-const START_X: u16 = 1;
+const START_X: u16 = 0;
+const START_Y: u16 = 0;
 
 pub fn draw<W>(out: &mut W, searched: SearchedTypes) -> io::Result<()>
 where
@@ -48,16 +44,30 @@ where
     draw_loop(out, lines, searched)
 }
 
-fn print_structure<W>(out: &mut W, lines: &Vec<String>, max_prints: Option<u16>) -> io::Result<()>
+fn suspend<W>(out: &mut W) -> io::Result<()>
 where
     W: Write,
 {
-    queue!(out, cursor::MoveTo(START_X, 1))?;
-    for (i, line) in lines
-        .iter()
-        .enumerate()
-        .take(max_prints.map(|v| v as usize).unwrap_or(lines.len()))
+    #[cfg(not(windows))]
     {
+        out.flush()?;
+        terminal::disable_raw_mode()?;
+        execute!(
+            std::io::stderr(),
+            terminal::LeaveAlternateScreen,
+            cursor::Show
+        )?;
+        signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+    }
+    Ok(())
+}
+
+fn print_structure<W>(out: &mut W, lines: &Vec<String>, max_prints: u16) -> io::Result<()>
+where
+    W: Write,
+{
+    queue!(out, cursor::MoveTo(START_X, START_Y))?;
+    for (i, line) in lines.iter().enumerate().take(max_prints as usize) {
         if i == 0 {
             queue!(
                 out,
@@ -81,12 +91,17 @@ where
 {
     let mut selected: usize = 0;
     let max_selected_id: usize = lines.len() - 1;
-    // - 1 on height because we start printing at (1,1)
-    // size -> (columns, rows)
-    // if we were able to get the size then enable the scrolling feature
-    let mut max_prints: Option<u16> = terminal::size().ok().map(|(_, height)| height - 1);
-    let scrolling: bool = max_prints.is_some();
-    let mut cursor_y: u16 = START_X;
+    let mut max_prints: u16 = terminal::size()
+        .ok()
+        .map(|(_, height)| height)
+        .unwrap_or_else(|| {
+            if lines.len() > i16::max_value() as usize {
+                u16::max_value()
+            } else {
+                lines.len() as u16
+            }
+        });
+    let mut cursor_y: u16 = START_Y;
     print_structure(out, &lines, max_prints)?;
     'outer: loop {
         let event = event::read();
@@ -102,52 +117,36 @@ where
                 KeyCode::Char(c) => match c {
                     'j' => {
                         if selected < max_selected_id - 1 {
-                            destyle_selected(out, cursor_y, lines.get(selected).unwrap())?;
-                            selected += 1;
-                            style_selected(out, cursor_y + 1, lines.get(selected).unwrap())?;
-                            if scrolling && cursor_y + SCROLL_OFFSET == max_prints.unwrap() {
-                                execute!(out, terminal::ScrollUp(1))?;
-                                if (selected + SCROLL_OFFSET as usize) < lines.len() {
-                                    execute!(out, cursor::MoveTo(START_X, max_prints.unwrap()))?;
-                                    execute!(
-                                        out,
-                                        Print(
-                                            lines.get(selected + SCROLL_OFFSET as usize).unwrap()
-                                        )
-                                    )?;
-                                }
-                            } else {
-                                cursor_y += 1;
-                            }
+                            move_down(out, &mut selected, &mut cursor_y, max_prints, &lines)?;
                         }
                     }
                     'k' => {
                         if selected > 0 {
-                            destyle_selected(out, cursor_y, lines.get(selected).unwrap())?;
-                            selected -= 1;
-                            style_selected(out, cursor_y - 1, lines.get(selected).unwrap())?;
-                            if selected < SCROLL_OFFSET as usize {
-                                cursor_y -= 1;
-                            } else if scrolling && cursor_y == SCROLL_OFFSET {
-                                execute!(out, terminal::ScrollDown(1))?;
-                                if selected + 1 > SCROLL_OFFSET as usize {
-                                    execute!(out, cursor::MoveTo(START_X, 0))?;
-                                    execute!(
-                                        out,
-                                        Print(
-                                            lines.get(selected - SCROLL_OFFSET as usize).unwrap()
-                                        )
-                                    )?;
-                                }
-                            } else {
-                                cursor_y -= 1;
-                            }
+                            move_up(out, &mut selected, &mut cursor_y, &lines)?;
                         }
                     }
                     'q' => break 'outer,
                     'c' => {
                         if modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                             break 'outer;
+                        }
+                    }
+                    'z' => {
+                        if modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                            max_prints = terminal::size()
+                                .ok()
+                                .map(|(_, height)| height)
+                                .unwrap_or_else(|| {
+                                    if lines.len() > i16::max_value() as usize {
+                                        u16::max_value()
+                                    } else {
+                                        lines.len() as u16
+                                    }
+                                });
+                            suspend(out)?;
+                            terminal::enable_raw_mode()?;
+                            execute!(out, terminal::EnterAlternateScreen)?;
+                            redraw(out, max_prints, &lines, &mut selected, &mut cursor_y)?;
                         }
                     }
                     _ => {}
@@ -158,13 +157,9 @@ where
                 _ => {}
             }
         } else if let Ok(Event::Resize(_, rows)) = event {
-            if max_prints != Some(rows) {
-                // does a overflow line cross over to the next?
-                execute!(out, terminal::Clear(ClearType::All))?;
-                max_prints = Some(rows);
-                print_structure(out, &lines, max_prints)?;
-                selected = 0;
-                cursor_y = 1;
+            if max_prints != rows {
+                max_prints = rows;
+                redraw(out, max_prints, &lines, &mut selected, &mut cursor_y)?;
             }
         }
     }
@@ -173,6 +168,84 @@ where
     // when an error occurs above still call
     // these cleanup functions
     cleanup(out)?;
+
+    Ok(())
+}
+
+// TODO make this work with keeping the selected id
+fn redraw<W>(
+    out: &mut W,
+    max_prints: u16,
+    lines: &Vec<String>,
+    selected: &mut usize,
+    cursor_y: &mut u16,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    execute!(out, terminal::Clear(ClearType::All))?;
+    print_structure(out, &lines, max_prints)?;
+    *selected = 0;
+    *cursor_y = START_Y;
+    Ok(())
+}
+
+fn move_down<W>(
+    out: &mut W,
+    selected: &mut usize,
+    cursor_y: &mut u16,
+    max_prints: u16,
+    lines: &Vec<String>,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    destyle_selected(out, *cursor_y, lines.get(*selected).unwrap())?;
+    *selected += 1;
+    style_selected(out, *cursor_y + 1, lines.get(*selected).unwrap())?;
+    if *selected + (SCROLL_OFFSET as usize) < max_prints as usize {
+        *cursor_y += 1;
+    } else if *cursor_y + SCROLL_OFFSET == max_prints {
+        execute!(out, terminal::ScrollUp(1))?;
+        if (*selected + SCROLL_OFFSET as usize) < lines.len() {
+            execute!(out, cursor::MoveTo(START_X, max_prints))?;
+            execute!(
+                out,
+                Print(lines.get(*selected + SCROLL_OFFSET as usize).unwrap())
+            )?;
+        }
+    } else {
+        *cursor_y += 1;
+    }
+    Ok(())
+}
+
+fn move_up<W>(
+    out: &mut W,
+    selected: &mut usize,
+    cursor_y: &mut u16,
+    lines: &Vec<String>,
+) -> io::Result<()>
+where
+    W: Write,
+{
+    destyle_selected(out, *cursor_y, lines.get(*selected).unwrap())?;
+    *selected -= 1;
+    style_selected(out, *cursor_y - 1, lines.get(*selected).unwrap())?;
+    if *selected < SCROLL_OFFSET as usize {
+        *cursor_y -= 1;
+    } else if *cursor_y == SCROLL_OFFSET {
+        execute!(out, terminal::ScrollDown(1))?;
+        if *selected + 1 > SCROLL_OFFSET as usize {
+            execute!(out, cursor::MoveTo(START_X, START_Y))?;
+            execute!(
+                out,
+                Print(lines.get(*selected - SCROLL_OFFSET as usize).unwrap())
+            )?;
+        }
+    } else {
+        *cursor_y -= 1;
+    }
 
     Ok(())
 }
@@ -266,23 +339,12 @@ where
     Ok(())
 }
 
-/*
-Commands for editors that can open on a line number, this is only active for
-searches that include the line number other wise just $EDITOR:
-`n` is the line number
-- vi: +n file
-- vim: +n file
-- neovim: +n file
-- vscode (code): --goto file:n
-- nano: +n file
-*/
 fn call_editor_exit<W>(out: &mut W, path: &PathBuf, line_num: Option<usize>) -> io::Result<()>
 where
     W: Write,
 {
     #[cfg(not(windows))]
     {
-        // if the env var isn't set than use open on macos xdg-open on other
         let opener = match std::env::var("EDITOR") {
             Ok(val) if !val.is_empty() => val,
             _ => match std::env::consts::OS {
@@ -291,7 +353,7 @@ where
             },
         };
 
-        let mut command: Command = Command::new(opener.clone());
+        let mut command: Command = Command::new(&opener);
         if let Some(l) = line_num {
             match opener.as_str() {
                 "vi" | "vim" | "nvim" | "nano" | "emacs" => {
@@ -299,17 +361,11 @@ where
                     command.arg(path);
                 }
                 "hx" => {
-                    let mut arg: std::ffi::OsString = path.as_os_str().to_os_string();
-                    arg.push(":");
-                    arg.push(l.to_string());
-                    command.arg(arg);
+                    command.arg(format!("{}:{l}", path.display()));
                 }
                 "code" => {
                     command.arg("--goto");
-                    let mut arg: std::ffi::OsString = path.as_os_str().to_os_string();
-                    arg.push(":");
-                    arg.push(l.to_string());
-                    command.arg(arg);
+                    command.arg(format!("{}:{l}", path.display()));
                 }
                 _ => {
                     command.arg(path);
@@ -320,7 +376,6 @@ where
         }
 
         use std::os::unix::process::CommandExt;
-        // don't leave alt screen here to avoid crash
         cleanup(out)?;
         command.exec();
     }
@@ -386,14 +441,12 @@ fn cleanup<W>(out: &mut W) -> io::Result<()>
 where
     W: Write,
 {
-    // don't leave alt screen here to avoid flashing the
-    // normal shell screen
     terminal::disable_raw_mode()?;
     execute!(
         out,
         style::ResetColor,
         cursor::SetCursorStyle::DefaultUserShape,
-        terminal::LeaveAlternateScreen, // this will flash the normal prompt
+        terminal::LeaveAlternateScreen,
         cursor::Show,
     )
 }
