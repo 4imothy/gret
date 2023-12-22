@@ -11,7 +11,6 @@
 // TODO On highlighting for the menu had to overwrite the default
 // fg to be white so that the background styling wouldn't
 // disappear after a `RESET_COLOR` was called
-// TODO Make reading a file faster
 // TODO Make a side bar for the menu that has numbers/letters corresponding with each row if one of those keys is pressed than enter that file
 // TODO Make work for stdin, not sure how to work with branching
 
@@ -38,7 +37,7 @@ fn main() {
     if CONFIG.is_dir {
         let top_dir = searcher::begin_search_on_directory(CONFIG.path.clone())
             .unwrap_or_else(|e| exit_error(e));
-        let mut out = std::io::stdout().lock();
+        let mut out: std::io::StdoutLock = std::io::stdout().lock();
         if CONFIG.menu {
             // only open the cli if there were matches
             if top_dir.borrow().children.len() > 0 || top_dir.borrow().found_files.len() > 0 {
