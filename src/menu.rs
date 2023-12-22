@@ -11,7 +11,7 @@ pub use crossterm::{
     style::{self, Attribute, Color, Print, Stylize},
     terminal::{self, ClearType},
 };
-use std::io::{self, Write};
+use std::io::{self, StdoutLock, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -19,10 +19,7 @@ const SCROLL_OFFSET: u16 = 5;
 const START_X: u16 = 0;
 const START_Y: u16 = 0;
 
-pub fn draw<W>(out: &mut W, searched: SearchedTypes) -> io::Result<()>
-where
-    W: Write,
-{
+pub fn draw(out: &mut impl Write, searched: SearchedTypes) -> io::Result<()> {
     enter(out)?;
     let mut buffer: Vec<u8> = Vec::new();
     write_results(&mut buffer, &searched)?;
@@ -34,49 +31,9 @@ where
     draw_loop(out, lines, searched)
 }
 
-fn suspend<W>(out: &mut W) -> io::Result<()>
-where
-    W: Write,
-{
-    #[cfg(not(windows))]
-    {
-        leave(out)?;
-        signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
-    }
-    Ok(())
-}
-
-fn resume<W>(
-    out: &mut W,
-    max_prints: &mut u16,
-    selected: &mut usize,
-    cursor_y: &mut u16,
-    lines: &Vec<String>,
-) -> io::Result<()>
-where
-    W: Write,
-{
-    *max_prints = terminal::size()
-        .ok()
-        .map(|(_, height)| height)
-        .unwrap_or_else(|| {
-            if lines.len() > i16::max_value() as usize {
-                u16::max_value()
-            } else {
-                lines.len() as u16
-            }
-        });
-    enter(out)?;
-    redraw(out, *max_prints, &lines, selected, cursor_y)?;
-    Ok(())
-}
-
-fn print_structure<W>(out: &mut W, lines: &Vec<String>, max_prints: u16) -> io::Result<()>
-where
-    W: Write,
-{
+fn print_structure(out: &mut impl Write, lines: &Vec<String>, num_rows: u16) -> io::Result<()> {
     queue!(out, cursor::MoveTo(START_X, START_Y))?;
-    for (i, line) in lines.iter().enumerate().take(max_prints as usize) {
+    for (i, line) in lines.iter().enumerate().take(num_rows as usize) {
         if i == 0 {
             queue!(
                 out,
@@ -94,13 +51,10 @@ where
     out.flush()
 }
 
-fn draw_loop<W>(out: &mut W, lines: Vec<String>, searched: SearchedTypes) -> io::Result<()>
-where
-    W: Write,
-{
+fn draw_loop(out: &mut impl Write, lines: Vec<String>, searched: SearchedTypes) -> io::Result<()> {
     let mut selected: usize = 0;
     let max_selected_id: usize = lines.len() - 1;
-    let mut max_prints: u16 = terminal::size()
+    let mut num_rows: u16 = terminal::size()
         .ok()
         .map(|(_, height)| height)
         .unwrap_or_else(|| {
@@ -111,7 +65,7 @@ where
             }
         });
     let mut cursor_y: u16 = START_Y;
-    print_structure(out, &lines, max_prints)?;
+    print_structure(out, &lines, num_rows)?;
     'outer: loop {
         let event = event::read();
 
@@ -126,7 +80,7 @@ where
                 KeyCode::Char(c) => match c {
                     'j' => {
                         if selected < max_selected_id - 1 {
-                            move_down(out, &mut selected, &mut cursor_y, max_prints, &lines)?;
+                            move_down(out, &mut selected, &mut cursor_y, num_rows, &lines)?;
                         }
                     }
                     'k' => {
@@ -143,7 +97,7 @@ where
                     'z' => {
                         if modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
                             suspend(out)?;
-                            resume(out, &mut max_prints, &mut selected, &mut cursor_y, &lines)?;
+                            resume(out, &mut num_rows, &mut selected, &mut cursor_y, &lines)?;
                         }
                     }
                     _ => {}
@@ -154,58 +108,80 @@ where
                 _ => {}
             }
         } else if let Ok(Event::Resize(_, rows)) = event {
-            if max_prints != rows {
-                max_prints = rows;
-                redraw(out, max_prints, &lines, &mut selected, &mut cursor_y)?;
+            if num_rows != rows {
+                num_rows = rows;
+                redraw(out, num_rows, &lines, &mut selected, &mut cursor_y)?;
             }
         }
     }
 
-    // TODO make a leave function so that
-    // when an error occurs above still call
-    // these cleanup functions
     leave(out)?;
 
     Ok(())
 }
 
+fn suspend(out: &mut impl Write) -> io::Result<()> {
+    #[cfg(not(windows))]
+    {
+        leave(out)?;
+        signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+    }
+    Ok(())
+}
+
+fn resume(
+    out: &mut impl Write,
+    num_rows: &mut u16,
+    selected: &mut usize,
+    cursor_y: &mut u16,
+    lines: &Vec<String>,
+) -> io::Result<()> {
+    *num_rows = terminal::size()
+        .ok()
+        .map(|(_, height)| height)
+        .unwrap_or_else(|| {
+            if lines.len() > i16::max_value() as usize {
+                u16::max_value()
+            } else {
+                lines.len() as u16
+            }
+        });
+    enter(out)?;
+    redraw(out, *num_rows, &lines, selected, cursor_y)?;
+    Ok(())
+}
+
 // TODO make this work with keeping the selected id
-fn redraw<W>(
-    out: &mut W,
-    max_prints: u16,
+fn redraw(
+    out: &mut impl Write,
+    num_rows: u16,
     lines: &Vec<String>,
     selected: &mut usize,
     cursor_y: &mut u16,
-) -> io::Result<()>
-where
-    W: Write,
-{
+) -> io::Result<()> {
     execute!(out, terminal::Clear(ClearType::All))?;
-    print_structure(out, &lines, max_prints)?;
+    print_structure(out, &lines, num_rows)?;
     *selected = 0;
     *cursor_y = START_Y;
     Ok(())
 }
 
-fn move_down<W>(
-    out: &mut W,
+fn move_down(
+    out: &mut impl Write,
     selected: &mut usize,
     cursor_y: &mut u16,
-    max_prints: u16,
+    num_rows: u16,
     lines: &Vec<String>,
-) -> io::Result<()>
-where
-    W: Write,
-{
-    destyle_selected(out, *cursor_y, lines.get(*selected).unwrap())?;
+) -> io::Result<()> {
+    destyle_at_cursor(out, *cursor_y, lines.get(*selected).unwrap())?;
     *selected += 1;
-    style_selected(out, *cursor_y + 1, lines.get(*selected).unwrap())?;
-    if *selected + (SCROLL_OFFSET as usize) < max_prints as usize {
+    style_at_cursor(out, *cursor_y + 1, lines.get(*selected).unwrap())?;
+    if *selected + (SCROLL_OFFSET as usize) < num_rows as usize {
         *cursor_y += 1;
-    } else if *cursor_y + SCROLL_OFFSET == max_prints {
+    } else if *cursor_y + SCROLL_OFFSET == num_rows {
         execute!(out, terminal::ScrollUp(1))?;
         if (*selected + SCROLL_OFFSET as usize) < lines.len() {
-            execute!(out, cursor::MoveTo(START_X, max_prints))?;
+            execute!(out, cursor::MoveTo(START_X, num_rows))?;
             execute!(
                 out,
                 Print(lines.get(*selected - 1 + SCROLL_OFFSET as usize).unwrap())
@@ -217,18 +193,15 @@ where
     Ok(())
 }
 
-fn move_up<W>(
-    out: &mut W,
+fn move_up(
+    out: &mut impl Write,
     selected: &mut usize,
     cursor_y: &mut u16,
     lines: &Vec<String>,
-) -> io::Result<()>
-where
-    W: Write,
-{
-    destyle_selected(out, *cursor_y, lines.get(*selected).unwrap())?;
+) -> io::Result<()> {
+    destyle_at_cursor(out, *cursor_y, lines.get(*selected).unwrap())?;
     *selected -= 1;
-    style_selected(out, *cursor_y - 1, lines.get(*selected).unwrap())?;
+    style_at_cursor(out, *cursor_y - 1, lines.get(*selected).unwrap())?;
     if *selected < SCROLL_OFFSET as usize {
         *cursor_y -= 1;
     } else if *cursor_y == SCROLL_OFFSET {
@@ -247,10 +220,7 @@ where
     Ok(())
 }
 
-fn style_selected<W>(out: &mut W, cursor_y: u16, line: &str) -> io::Result<()>
-where
-    W: Write,
-{
+fn style_at_cursor(out: &mut impl Write, cursor_y: u16, line: &str) -> io::Result<()> {
     execute!(
         out,
         cursor::MoveTo(START_X, cursor_y),
@@ -258,22 +228,16 @@ where
     )
 }
 
-fn destyle_selected<W>(out: &mut W, cursor_y: u16, line: &str) -> io::Result<()>
-where
-    W: Write,
-{
+fn destyle_at_cursor(out: &mut impl Write, cursor_y: u16, line: &str) -> io::Result<()> {
     execute!(out, cursor::MoveTo(START_X, cursor_y), Print(line))
 }
 
 // this logic should be easy with doing both just_files and directories
-fn find_selected_and_edit<W>(
-    out: &mut W,
+fn find_selected_and_edit(
+    out: &mut impl Write,
     selected: usize,
     searched: SearchedTypes,
-) -> io::Result<()>
-where
-    W: Write,
-{
+) -> io::Result<()> {
     if CONFIG.just_files {
         return find_selected_just_files(out, selected, searched);
     }
@@ -288,10 +252,12 @@ where
     }
 }
 
-fn handle_file<W>(out: &mut W, selected: usize, current: &mut usize, file: &File) -> io::Result<()>
-where
-    W: Write,
-{
+fn handle_file(
+    out: &mut impl Write,
+    selected: usize,
+    current: &mut usize,
+    file: &File,
+) -> io::Result<()> {
     if *current == selected {
         call_editor_exit(out, &file.path, None)?;
     }
@@ -306,15 +272,12 @@ where
     Ok(())
 }
 
-fn handle_dir<W>(
-    out: &mut W,
+fn handle_dir(
+    out: &mut impl Write,
     selected: usize,
     current: &mut usize,
     dir: &DirPointer,
-) -> io::Result<()>
-where
-    W: Write,
-{
+) -> io::Result<()> {
     if *current == selected {
         call_editor_exit(out, &dir.borrow().path, None)?;
     }
@@ -337,10 +300,11 @@ where
     Ok(())
 }
 
-fn call_editor_exit<W>(out: &mut W, path: &PathBuf, line_num: Option<usize>) -> io::Result<()>
-where
-    W: Write,
-{
+fn call_editor_exit(
+    out: &mut impl Write,
+    path: &PathBuf,
+    line_num: Option<usize>,
+) -> io::Result<()> {
     #[cfg(not(windows))]
     {
         let opener = match std::env::var("EDITOR") {
@@ -391,14 +355,11 @@ where
     Ok(())
 }
 
-fn find_selected_just_files<W>(
-    out: &mut W,
+fn find_selected_just_files(
+    out: &mut impl Write,
     selected: usize,
     searched: SearchedTypes,
-) -> io::Result<()>
-where
-    W: Write,
-{
+) -> io::Result<()> {
     let mut current: usize = 0;
     match &searched {
         SearchedTypes::Dir(dir) => {
@@ -410,15 +371,12 @@ where
     }
 }
 
-fn handle_dir_just_files<W>(
-    out: &mut W,
+fn handle_dir_just_files(
+    out: &mut impl Write,
     selected: usize,
     current: &mut usize,
     dir_ptr: &DirPointer,
-) -> io::Result<()>
-where
-    W: Write,
-{
+) -> io::Result<()> {
     let dir = dir_ptr.borrow();
     let children = &dir.children;
     let files = &dir.found_files;
@@ -435,26 +393,18 @@ where
     Ok(())
 }
 
-fn enter<W>(out: &mut W) -> io::Result<()>
-where
-    W: Write,
-{
+fn enter(out: &mut impl Write) -> io::Result<()> {
     execute!(
         out,
         style::ResetColor,
         cursor::Hide,
         terminal::EnterAlternateScreen,
-        // line wrapping causes issues with cursor y being off
-        // from where it should be
         terminal::DisableLineWrap,
     )?;
     terminal::enable_raw_mode()
 }
 
-fn leave<W>(out: &mut W) -> io::Result<()>
-where
-    W: Write,
-{
+fn leave(out: &mut impl Write) -> io::Result<()> {
     terminal::disable_raw_mode()?;
     out.flush()?;
     execute!(

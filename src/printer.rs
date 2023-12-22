@@ -5,10 +5,7 @@ use crate::searcher::{DirPointer, Directory, File, LineMatch, SearchedTypes};
 use crate::CONFIG;
 use std::io::{self, Write};
 
-fn just_write_files<W>(out: &mut W, result: &SearchedTypes) -> io::Result<()>
-where
-    W: Write,
-{
+fn just_write_files(out: &mut impl Write, result: &SearchedTypes) -> io::Result<()> {
     match &result {
         SearchedTypes::Dir(dir) => {
             return write_files(out, dir);
@@ -19,10 +16,7 @@ where
     }
 }
 
-fn write_files<W>(out: &mut W, dir_ptr: &DirPointer) -> io::Result<()>
-where
-    W: Write,
-{
+fn write_files(out: &mut impl Write, dir_ptr: &DirPointer) -> io::Result<()> {
     let dir = dir_ptr.borrow();
     let children = &dir.children;
     let files = &dir.found_files;
@@ -35,10 +29,7 @@ where
     Ok(())
 }
 
-fn write_file_path<W>(out: &mut W, file: &File) -> io::Result<()>
-where
-    W: Write,
-{
+fn write_file_path(out: &mut impl Write, file: &File) -> io::Result<()> {
     let path: &str = &file.path.to_string_lossy();
     if let Some(linked) = &file.linked {
         if CONFIG.styled {
@@ -66,10 +57,7 @@ where
     Ok(())
 }
 
-pub fn write_results<W>(out: &mut W, result: &SearchedTypes) -> io::Result<()>
-where
-    W: Write,
-{
+pub fn write_results(out: &mut impl Write, result: &SearchedTypes) -> io::Result<()> {
     if CONFIG.just_files {
         return just_write_files(out, result);
     }
@@ -85,10 +73,7 @@ where
     Ok(())
 }
 
-fn start_print_directory<W>(out: &mut W, dir_ptr: &DirPointer) -> io::Result<()>
-where
-    W: Write,
-{
+fn start_print_directory(out: &mut impl Write, dir_ptr: &DirPointer) -> io::Result<()> {
     let prefix = "".to_string();
     let dir = dir_ptr.borrow();
 
@@ -97,14 +82,11 @@ where
     Ok(())
 }
 
-fn handle_descendants<W>(
-    out: &mut W,
+fn handle_descendants(
+    out: &mut impl Write,
     dir: std::cell::Ref<'_, Directory>,
     prefix: String,
-) -> io::Result<()>
-where
-    W: Write,
-{
+) -> io::Result<()> {
     let children = &dir.children;
     let files = &dir.found_files;
     let flen = files.len();
@@ -138,15 +120,12 @@ where
     Ok(())
 }
 
-fn print_file<W>(
-    out: &mut W,
+fn print_file(
+    out: &mut impl Write,
     file: &File,
     mut prefix: String,
     parent_has_next: bool,
-) -> io::Result<()>
-where
-    W: Write,
-{
+) -> io::Result<()> {
     if parent_has_next {
         write!(out, "{}{}", prefix, BRANCH_HAS_NEXT)?;
         write_file_name(out, &file)?;
@@ -173,10 +152,7 @@ where
     Ok(())
 }
 
-fn print_single_file<W>(out: &mut W, file: &File) -> io::Result<()>
-where
-    W: Write,
-{
+fn print_single_file(out: &mut impl Write, file: &File) -> io::Result<()> {
     let len = file.lines.len();
     if len > 0 {
         write_file_name(out, &file)?;
@@ -195,10 +171,7 @@ where
     Ok(())
 }
 
-pub fn write_file_name<W>(out: &mut W, file: &File) -> io::Result<()>
-where
-    W: Write,
-{
+pub fn write_file_name(out: &mut impl Write, file: &File) -> io::Result<()> {
     if let Some(linked) = &file.linked {
         if CONFIG.styled {
             write!(out, "{} -> ", formats::file_name(&file.name))?;
@@ -225,10 +198,7 @@ where
     Ok(())
 }
 
-fn write_dir_name<W>(out: &mut W, dir: &Directory) -> io::Result<()>
-where
-    W: Write,
-{
+fn write_dir_name(out: &mut impl Write, dir: &Directory) -> io::Result<()> {
     if CONFIG.styled {
         write!(out, "{}", formats::dir_name(&dir.name))?;
     } else {
@@ -241,10 +211,7 @@ where
     Ok(())
 }
 
-pub fn print_line<W>(out: &mut W, line_match: &LineMatch) -> std::io::Result<()>
-where
-    W: std::io::Write,
-{
+pub fn print_line(out: &mut impl Write, line_match: &LineMatch) -> std::io::Result<()> {
     let line: &[u8] = &line_match.contents;
     // let line: &[u8] = &line_match.contents;
     let line_num = line_match.line_num;
@@ -285,16 +252,10 @@ where
     Ok(())
 }
 
-fn write_resets<W>(out: &mut W) -> io::Result<()>
-where
-    W: Write,
-{
+fn write_resets(out: &mut impl Write) -> io::Result<()> {
     write!(out, "{}", CONFIG.reset)
 }
 
-fn new_line<W>(out: &mut W) -> io::Result<()>
-where
-    W: Write,
-{
+fn new_line(out: &mut impl Write) -> io::Result<()> {
     write!(out, "{}", CONFIG.terminator)
 }
