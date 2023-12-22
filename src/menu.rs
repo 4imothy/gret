@@ -208,7 +208,7 @@ where
             execute!(out, cursor::MoveTo(START_X, max_prints))?;
             execute!(
                 out,
-                Print(lines.get(*selected + SCROLL_OFFSET as usize).unwrap())
+                Print(lines.get(*selected - 1 + SCROLL_OFFSET as usize).unwrap())
             )?;
         }
     } else {
