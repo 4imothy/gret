@@ -50,35 +50,22 @@ impl Selected {
         let files = &dir.found_files;
         let mut sel: Option<Selected>;
         // this can be shortened to checking if just_files and then incrementing dir
-        if CONFIG.just_files {
-            for child in children {
-                sel = Selected::search_dir(&child, selected, current);
-                if sel.is_some() {
-                    return sel;
-                }
-            }
-            for file in files {
-                sel = Selected::search_file(file, selected, current);
-                if sel.is_some() {
-                    return sel;
-                }
-            }
-        } else {
+        if !CONFIG.just_files {
             if *current == selected {
                 return Some(Selected::new(dir.path.clone(), 0));
             }
             *current += 1;
-            for child in children {
-                sel = Selected::search_dir(&child, selected, current);
-                if sel.is_some() {
-                    return sel;
-                }
+        }
+        for child in children {
+            sel = Selected::search_dir(&child, selected, current);
+            if sel.is_some() {
+                return sel;
             }
-            for file in files {
-                sel = Selected::search_file(file, selected, current);
-                if sel.is_some() {
-                    return sel;
-                }
+        }
+        for file in files {
+            sel = Selected::search_file(file, selected, current);
+            if sel.is_some() {
+                return sel;
             }
         }
         return None;
