@@ -15,8 +15,6 @@ use std::io::{self, StdoutLock, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
-// use crate::logger;
-
 const SCROLL_OFFSET: u16 = 5;
 const START_X: u16 = 0;
 const START_Y: u16 = 0;
@@ -48,7 +46,6 @@ impl Selected {
 
     fn search_dir(dir_ptr: &DirPointer, selected: usize, current: &mut usize) -> Option<Selected> {
         let dir = dir_ptr.borrow();
-        // logger::log!("directory path {:?}", dir.path.display());
         let children = &dir.children;
         let files = &dir.found_files;
         let mut sel: Option<Selected>;

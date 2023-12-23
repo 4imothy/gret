@@ -33,7 +33,6 @@ const MATCHED_COLORS: [SetForegroundColor; 3] = [GREEN_FG, MAGENTA_FG, RED_FG];
 
 pub fn get_terminator(is_menu: bool) -> String {
     if is_menu {
-        // reset is necessary for menu selection
         return format!("{}{}{}", RESET, NEW_LINE_RETURN, DEFAULT_FG);
     }
     NEW_LINE.to_string()
@@ -41,7 +40,6 @@ pub fn get_terminator(is_menu: bool) -> String {
 
 pub fn get_reset(is_menu: bool) -> String {
     if is_menu {
-        // this has to be done for background styling on menu
         format!("{}{}", DEFAULT_FG, NO_BOLD)
     } else {
         format!("{}{}", RESET_COLOR, NO_BOLD)
