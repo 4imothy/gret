@@ -24,11 +24,11 @@ const START_Y: u16 = 0;
 // TODO get rid of all the path clones this will be done with the rewrite without RefCell
 struct Selected {
     path: PathBuf,
-    line: Option<usize>,
+    line: usize,
 }
 
 impl Selected {
-    pub fn new(path: PathBuf, line: Option<usize>) -> Selected {
+    pub fn new(path: PathBuf, line: usize) -> Selected {
         Selected { path, line }
     }
 
@@ -65,7 +65,7 @@ impl Selected {
             }
         } else {
             if *current == selected {
-                return Some(Selected::new(dir.path.clone(), None));
+                return Some(Selected::new(dir.path.clone(), 0));
             }
             *current += 1;
             for child in children {
@@ -86,13 +86,13 @@ impl Selected {
 
     fn search_file(file: &File, selected: usize, current: &mut usize) -> Option<Selected> {
         if *current == selected {
-            return Some(Selected::new(file.path.clone(), None));
+            return Some(Selected::new(file.path.clone(), 0));
         }
         *current += 1;
         if !CONFIG.just_files {
             for line in file.lines.iter() {
                 if *current == selected {
-                    return Some(Selected::new(file.path.clone(), Some(line.line_num)));
+                    return Some(Selected::new(file.path.clone(), line.line_num));
                 }
                 *current += 1;
             }
@@ -337,28 +337,24 @@ impl<'a, 'b> Menu<'a, 'b> {
                 },
             };
 
+            let line_num: usize = selected.line;
             let mut command: Command = Command::new(&opener);
-            if let Some(l) = selected.line {
-                match opener.as_str() {
-                    "vi" | "vim" | "nvim" | "nano" | "emacs" => {
-                        command.arg(format!("+{l}"));
-                        command.arg(selected.path);
-                    }
-                    "hx" => {
-                        command.arg(format!("{}:{l}", selected.path.display()));
-                    }
-                    "code" => {
-                        command.arg("--goto");
-                        command.arg(format!("{}:{l}", selected.path.display()));
-                    }
-                    _ => {
-                        command.arg(selected.path);
-                    }
+            match opener.as_str() {
+                "vi" | "vim" | "nvim" | "nano" | "emacs" => {
+                    command.arg(format!("+{line_num}"));
+                    command.arg(selected.path);
                 }
-            } else {
-                command.arg(selected.path);
+                "hx" => {
+                    command.arg(format!("{}:{line_num}", selected.path.display()));
+                }
+                "code" => {
+                    command.arg("--goto");
+                    command.arg(format!("{}:{line_num}", selected.path.display()));
+                }
+                _ => {
+                    command.arg(selected.path);
+                }
             }
-
             use std::os::unix::process::CommandExt;
             self.leave()?;
 

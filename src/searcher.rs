@@ -238,11 +238,6 @@ pub fn search_file(pb: PathBuf) -> Result<Option<File>, Errors> {
                 None => Some(target_path),
             });
 
-    if let Some(l) = linked.clone() {
-        println!("linked, {:?}", l.display());
-    }
-    println!("after let");
-
     let mut file = File {
         lines: Vec::new(),
         name: get_name_as_string(&pb)?,
