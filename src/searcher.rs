@@ -37,8 +37,6 @@ impl Directory {
 pub struct File {
     pub name: String,
     pub lines: Vec<LineMatch>,
-    // if it is a symbolic link then stored the
-    // path that is linked to
     pub linked: Option<PathBuf>,
     pub path: PathBuf,
 }
@@ -223,18 +221,27 @@ pub fn search_file(pb: PathBuf) -> Result<Option<File>, Errors> {
         Some(b) => content_bytes = b,
     }
 
-    let linked = fs::read_link(&pb).ok().and_then(|target_path| {
-        match std::env::var("HOME").ok() {
-            Some(home) => {
-                // if HOME was found
-                target_path
-                    .strip_prefix(home)
-                    .ok()
-                    .map(|clean_path| PathBuf::from("~").join(clean_path))
-            }
-            None => Some(target_path),
-        }
-    });
+    let linked: Option<PathBuf> =
+        fs::read_link(&pb)
+            .ok()
+            .and_then(|target_path| match std::env::var("HOME").ok() {
+                Some(home) => {
+                    if target_path.starts_with(&home) {
+                        target_path
+                            .strip_prefix(&home)
+                            .ok()
+                            .map(|clean_path| PathBuf::from("~").join(clean_path))
+                    } else {
+                        Some(target_path)
+                    }
+                }
+                None => Some(target_path),
+            });
+
+    if let Some(l) = linked.clone() {
+        println!("linked, {:?}", l.display());
+    }
+    println!("after let");
 
     let mut file = File {
         lines: Vec::new(),
