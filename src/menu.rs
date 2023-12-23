@@ -49,6 +49,7 @@ impl Selected {
         let children = &dir.children;
         let files = &dir.found_files;
         let mut sel: Option<Selected>;
+        // this can be shortened to checking if just_files and then incrementing dir
         if CONFIG.just_files {
             for child in children {
                 sel = Selected::search_dir(&child, selected, current);
@@ -57,7 +58,6 @@ impl Selected {
                 }
             }
             for file in files {
-                // TODO put this in the search_file function
                 sel = Selected::search_file(file, selected, current);
                 if sel.is_some() {
                     return sel;
