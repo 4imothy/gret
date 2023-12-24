@@ -13,6 +13,9 @@ use std::rc::Rc;
 
 pub type DirPointer = Rc<RefCell<Directory>>;
 
+// Each directory needs to know its children directories and its matched files
+//
+
 pub struct Directory {
     // the directories that have a matched file
     pub children: Vec<DirPointer>,
@@ -47,7 +50,7 @@ pub enum SearchedTypes {
 }
 
 pub struct Match {
-    pub matcher_id: usize,
+    pub regex_id: usize,
     pub start: usize,
     pub end: usize,
 }
@@ -104,7 +107,7 @@ impl File {
                 }
                 for m in it {
                     matches.push(Match {
-                        matcher_id: j,
+                        regex_id: j,
                         start: m.start(),
                         end: m.end(),
                     });
@@ -133,6 +136,8 @@ impl File {
     }
 }
 
+// Make this return a list of all directories and a list of files each
+// have relative pointers to things, files don't have a reason storing relative pointers
 pub fn begin_search_on_directory(root_path: PathBuf) -> Result<DirPointer, Errors> {
     let w = WalkBuilder::new(&root_path)
         .hidden(!CONFIG.search_hidden)

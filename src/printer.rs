@@ -240,7 +240,7 @@ pub fn print_line(out: &mut impl Write, line_match: &LineMatch) -> std::io::Resu
         )?;
         last_match = m.end;
         if CONFIG.styled {
-            write!(out, "{}{}", formats::get_color(m.matcher_id), formats::BOLD,)?;
+            write!(out, "{}{}", formats::get_color(m.regex_id), formats::BOLD,)?;
         }
         write!(out, "{}", String::from_utf8_lossy(&line[m.start..m.end]))?;
         if CONFIG.styled {
