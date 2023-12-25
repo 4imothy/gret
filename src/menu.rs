@@ -2,7 +2,8 @@
 
 use crate::formats;
 use crate::printer;
-use crate::searcher::{DirPointer, File, SearchedTypes};
+use crate::searcher::Directory;
+use crate::searcher::{File, Searched};
 use crate::CONFIG;
 use crossterm::{
     cursor,
@@ -11,8 +12,8 @@ use crossterm::{
     style::{self, Print, Stylize},
     terminal::{self, ClearType},
 };
+use std::ffi::OsString;
 use std::io::{self, StdoutLock, Write};
-use std::path::PathBuf;
 use std::process::Command;
 
 const SCROLL_OFFSET: u16 = 5;
@@ -20,34 +21,37 @@ const START_X: u16 = 0;
 const START_Y: u16 = 0;
 
 // need to store the path and the line number?
-// TODO can actually always search for line num just set it to be 0 and it will be the same
-// TODO get rid of all the path clones this will be done with the rewrite without RefCell
 struct Selected {
-    path: PathBuf,
+    path: OsString,
     line: usize,
 }
 
 impl Selected {
-    pub fn new(path: PathBuf, line: usize) -> Selected {
+    pub fn new(path: OsString, line: usize) -> Selected {
         Selected { path, line }
     }
 
-    fn get_selected_info(selected: usize, searched: &SearchedTypes) -> Selected {
+    fn get_selected_info(selected: usize, searched: &Searched) -> Selected {
         let mut current: usize = 0;
         match searched {
-            SearchedTypes::Dir(dir) => {
-                return Selected::search_dir(dir, selected, &mut current).unwrap();
+            Searched::Dir(dirs) => {
+                return Selected::search_dir(dirs.get(0).unwrap(), selected, &mut current, dirs)
+                    .unwrap();
             }
-            SearchedTypes::File(file) => {
+            Searched::File(file) => {
                 return Selected::search_file(file, selected, &mut current).unwrap();
             }
         }
     }
 
-    fn search_dir(dir_ptr: &DirPointer, selected: usize, current: &mut usize) -> Option<Selected> {
-        let dir = dir_ptr.borrow();
+    fn search_dir(
+        dir: &Directory,
+        selected: usize,
+        current: &mut usize,
+        dirs: &Vec<Directory>,
+    ) -> Option<Selected> {
         let children = &dir.children;
-        let files = &dir.found_files;
+        let files = &dir.files;
         let mut sel: Option<Selected>;
         // this can be shortened to checking if just_files and then incrementing dir
         if !CONFIG.just_files {
@@ -57,7 +61,7 @@ impl Selected {
             *current += 1;
         }
         for child in children {
-            sel = Selected::search_dir(&child, selected, current);
+            sel = Selected::search_dir(dirs.get(*child).unwrap(), selected, current, dirs);
             if sel.is_some() {
                 return sel;
             }
@@ -73,13 +77,16 @@ impl Selected {
 
     fn search_file(file: &File, selected: usize, current: &mut usize) -> Option<Selected> {
         if *current == selected {
-            return Some(Selected::new(file.path.clone(), 0));
+            return Some(Selected::new(file.path.clone().into_os_string(), 0));
         }
         *current += 1;
         if !CONFIG.just_files {
             for line in file.lines.iter() {
                 if *current == selected {
-                    return Some(Selected::new(file.path.clone(), line.line_num));
+                    return Some(Selected::new(
+                        file.path.clone().into_os_string(),
+                        line.line_num,
+                    ));
                 }
                 *current += 1;
             }
@@ -92,13 +99,13 @@ pub struct Menu<'a, 'b> {
     selected_id: usize,
     cursor_y: u16,
     out: &'a mut StdoutLock<'b>,
-    searched: SearchedTypes,
+    searched: Searched,
     lines: Vec<String>,
     num_rows: u16,
 }
 
 impl<'a, 'b> Menu<'a, 'b> {
-    fn new(out: &'a mut StdoutLock<'b>, searched: SearchedTypes) -> io::Result<Menu<'a, 'b>> {
+    fn new(out: &'a mut StdoutLock<'b>, searched: Searched) -> io::Result<Menu<'a, 'b>> {
         let mut buffer: Vec<u8> = Vec::new();
         printer::write_results(&mut buffer, &searched)?;
         let lines: Vec<String> = buffer
@@ -119,7 +126,7 @@ impl<'a, 'b> Menu<'a, 'b> {
         terminal::size().ok().map(|(_, height)| height).unwrap()
     }
 
-    pub fn draw(out: &'a mut StdoutLock<'b>, searched: SearchedTypes) -> io::Result<()> {
+    pub fn draw(out: &'a mut StdoutLock<'b>, searched: Searched) -> io::Result<()> {
         let mut menu: Menu = Menu::new(out, searched)?;
 
         menu.enter()?;
@@ -313,51 +320,48 @@ impl<'a, 'b> Menu<'a, 'b> {
         )
     }
 
+    #[cfg(windows)]
     fn exit_and_open(&mut self, selected: Selected) -> io::Result<()> {
-        #[cfg(not(windows))]
-        {
-            let opener = match std::env::var("EDITOR") {
-                Ok(val) if !val.is_empty() => val,
-                _ => match std::env::consts::OS {
-                    "macos" => "open".to_string(),
-                    _ => "xdg-open".to_string(),
-                },
-            };
+        Command::new("cmd")
+            .arg("/C")
+            .arg("start")
+            .arg(selected.path)
+            .spawn()?;
+        menu.leave()?;
+    }
 
-            let line_num: usize = selected.line;
-            let mut command: Command = Command::new(&opener);
-            match opener.as_str() {
-                "vi" | "vim" | "nvim" | "nano" | "emacs" => {
-                    command.arg(format!("+{line_num}"));
-                    command.arg(selected.path);
-                }
-                "hx" => {
-                    command.arg(format!("{}:{line_num}", selected.path.display()));
-                }
-                "code" => {
-                    command.arg("--goto");
-                    command.arg(format!("{}:{line_num}", selected.path.display()));
-                }
-                _ => {
-                    command.arg(selected.path);
-                }
+    #[cfg(not(windows))]
+    fn exit_and_open(&mut self, selected: Selected) -> io::Result<()> {
+        let opener = match std::env::var("EDITOR") {
+            Ok(val) if !val.is_empty() => val,
+            _ => match std::env::consts::OS {
+                "macos" => "open".to_string(),
+                _ => "xdg-open".to_string(),
+            },
+        };
+
+        let line_num: usize = selected.line;
+        let mut command: Command = Command::new(&opener);
+        match opener.as_str() {
+            "vi" | "vim" | "nvim" | "nano" | "emacs" => {
+                command.arg(format!("+{line_num}"));
+                command.arg(selected.path);
             }
-            use std::os::unix::process::CommandExt;
-            self.leave()?;
-
-            command.exec();
+            "hx" => {
+                command.arg(format!("{}:{line_num}", selected.path.to_string_lossy()));
+            }
+            "code" => {
+                command.arg("--goto");
+                command.arg(format!("{}:{line_num}", selected.path.to_string_lossy()));
+            }
+            _ => {
+                command.arg(selected.path);
+            }
         }
+        use std::os::unix::process::CommandExt;
+        self.leave()?;
 
-        #[cfg(windows)]
-        {
-            Command::new("cmd")
-                .arg("/C")
-                .arg("start")
-                .arg(selected.path)
-                .spawn()?;
-            menu.leave()?;
-        }
-
+        command.exec();
         Ok(())
     }
 }

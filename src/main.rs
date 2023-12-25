@@ -3,10 +3,6 @@
 // TODO change the hidden option to still not searh .git directory i think or make that a seperate
 // option, --hidden or -h to show . and -a or --all to search all files
 // don't think there is a use case to search .git along with other files
-// TODO this is possible without breaking the
-// borrow checker, maybe store a list
-// of all elements with indices
-// also shows the files hidden by git
 // TODO fix completions
 // TODO On highlighting for the menu had to overwrite the default
 // fg to be white so that the background styling wouldn't
@@ -27,7 +23,7 @@ use errors::Errors;
 use lazy_static::lazy_static;
 use menu::Menu;
 use printer::write_results;
-use searcher::SearchedTypes;
+use searcher::Searched;
 use std::io::{stdout, StdoutLock};
 
 lazy_static! {
@@ -36,19 +32,20 @@ lazy_static! {
     });
 }
 
-// TODO put the menu in an easy function
 fn main() {
     let mut out: StdoutLock = stdout().lock();
     if CONFIG.is_dir {
-        let top_dir = searcher::begin_search_on_directory(CONFIG.path.clone())
-            .unwrap_or_else(|e| exit_error(e));
+        let directories =
+            searcher::search_dir(CONFIG.path.clone()).unwrap_or_else(|e| exit_error(e));
         if CONFIG.menu {
             // only open the cli if there were matches
-            if top_dir.borrow().children.len() > 0 || top_dir.borrow().found_files.len() > 0 {
-                start_menu(&mut out, SearchedTypes::Dir(top_dir));
+            if directories.get(0).unwrap().children.len() > 0
+                || directories.get(0).unwrap().files.len() > 0
+            {
+                start_menu(&mut out, Searched::Dir(directories));
             }
         } else {
-            print_results(&mut out, SearchedTypes::Dir(top_dir));
+            print_results(&mut out, Searched::Dir(directories));
         }
     } else {
         if let Some(file) =
@@ -56,24 +53,24 @@ fn main() {
         {
             if CONFIG.menu {
                 if file.lines.len() > 0 {
-                    start_menu(&mut out, SearchedTypes::File(file));
+                    start_menu(&mut out, Searched::File(file));
                 }
             } else {
-                print_results(&mut out, SearchedTypes::File(file));
+                print_results(&mut out, Searched::File(file));
             }
         }
     }
 }
 
-fn start_menu(out: &mut StdoutLock, searched: SearchedTypes) {
-    Menu::draw(out, searched).unwrap_or_else(|e| {
+fn start_menu(out: &mut StdoutLock, res: Searched) {
+    Menu::draw(out, res).unwrap_or_else(|e| {
         exit_error(Errors::IOError {
             cause: e.to_string(),
         });
     });
 }
 
-fn print_results(out: &mut StdoutLock, searched: SearchedTypes) {
+fn print_results(out: &mut StdoutLock, searched: Searched) {
     write_results(out, &searched).unwrap_or_else(|e| {
         exit_error(Errors::IOError {
             cause: e.to_string(),
