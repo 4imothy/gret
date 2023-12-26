@@ -81,8 +81,6 @@ jobs:
           ${{ env.CARGO }} build --target ${{ matrix.job.target }} --locked --release
           rm target/${{ matrix.job.target }}/release/gret.d
           cp target/${{ matrix.job.target }}/release/gret* gret-${{ matrix.job.exe }}
-          bin="target/${{ matrix.job.target }}/release/gret-${{ matrix.job.exe }}"
-          echo "BIN=$bin" >> $GITHUB_ENV
 
       - name: Upload
         env:
@@ -90,5 +88,5 @@ jobs:
         shell: bash
         run: |
           version="${{ needs.create-release.outputs.version }}"
-          gh release upload "$version" ${{ env.BIN }}
+          gh release upload "$version" gret-${{ matrix.job.exe }}
 
