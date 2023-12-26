@@ -62,7 +62,7 @@ jobs:
           targets: ${{ matrix.job.target }}
 
       - name: Use Cross
-        if: matrix.os == 'ubuntu-latest' && matrix.target != ''
+        if: matrix.job.os == 'ubuntu-latest' && matrix.job.target != ''
         shell: bash
         run: |
           dir="$RUNNER_TEMP/cross-download"
@@ -76,10 +76,10 @@ jobs:
       - name: Build binary
         shell: bash
         run: |
-          ${{ env.CARGO }} build --target ${{ matrix.target }} --locked --release
+          ${{ env.CARGO }} build --target ${{ matrix.job.target }} --locked --release
           rm target/${{ matrix.job.target }}/release/gret.d
           cp target/${{ matrix.job.target }}/release/gret* gret-${{ matrix.job.exe }}
-          bin="target/${{ matrix.target }}/release/gret-${{ matrix.job-exe }}"
+          bin="target/${{ matrix.job.target }}/release/gret-${{ matrix.job.exe }}"
           echo "BIN=$bin" >> $GITHUB_ENV
 
       - name: Upload
