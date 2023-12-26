@@ -1,0 +1,65 @@
+name: Continous Release
+
+on:
+  push:
+    branches:
+      - "main"
+
+jobs:
+  build:
+    name: Build
+    strategy:
+      matrix:
+        job:
+          - target: "x86_64-unknown-linux-musl"
+            exe: "amd64-linux"
+            os: "ubuntu-latest"
+          - target: "aarch64-unknown-linux-musl"
+            exe: "aarch64-linux"
+            os: "ubuntu-latest"
+          - target: "armv7-unknown-linux-musleabi"
+            exe: "armv7-linux"
+            os: "ubuntu-latest"
+          - target: "x86_64-apple-darwin"
+            exe: "amd64-macos"
+            os: "macos-latest"
+          - target: "aarch64-apple-darwin"
+            exe: "aarch64-macos"
+            os: "macos-latest"
+          - target: "x86_64-pc-windows-msvc"
+            exe: "windows.exe"
+            os: "windows-2019"
+
+    runs-on: ${{ matrix.job.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          default: true
+          target: ${{ matrix.job.target }}
+          components: "rust-src"
+
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          args: "--release --target=${{ matrix.job.target }} --locked"
+          command: "build"
+      - name: Build
+        run: cargo build --release --target=${{ matrix.job.target }} --locked
+
+      - name: Rename result
+        run: |
+          rm target/${{ matrix.job.target }}/release/gret.d
+          cp target/${{ matrix.job.target }}/release/gret* gret-${{ matrix.job.exe }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: target/release/gret-${{ matrix.job.exe }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
