@@ -327,7 +327,7 @@ impl<'a, 'b> Menu<'a, 'b> {
             .arg("start")
             .arg(selected.path)
             .spawn()?;
-        self.leave()?;
+        self.leave()
     }
 
     #[cfg(not(windows))]
