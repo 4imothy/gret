@@ -37,6 +37,7 @@ jobs:
     runs-on: ${{ matrix.job.os }}
     env:
       CARGO: cargo
+      CROSS_VERSION: v0.2.5
     strategy:
       fail-fast: true
       matrix:
