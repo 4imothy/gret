@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: CC-BY-4.0
 
+// TODO put the line in the Selected struct around an os check
 // TODO change the hidden option to still not searh .git directory i think or make that a seperate
 // option, --hidden or -h to show . and -a or --all to search all files
 // don't think there is a use case to search .git along with other files
