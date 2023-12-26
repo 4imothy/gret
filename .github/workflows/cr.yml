@@ -41,10 +41,12 @@ jobs:
           override: true
           default: true
           target: ${{ matrix.job.target }}
-          components: "rust-src"
 
-      - name: Build
-        run: cargo build --release --target=${{ matrix.job.target }} --locked
+      - uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: "--release --target=${{ matrix.job.target }} --locked",
 
       - name: Rename result
         run: |
