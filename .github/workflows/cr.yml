@@ -43,13 +43,10 @@ jobs:
       matrix:
         job:
           - target: "x86_64-unknown-linux-musl"
-            exe: "amd64-linux"
             os: "ubuntu-latest"
           - target: "aarch64-unknown-linux-musl"
-            exe: "aarch64-linux"
             os: "ubuntu-latest"
           - target: "x86_64-apple-darwin"
-            exe: "amd64-macos"
             os: "macos-latest"
           - target: "x86_64-pc-windows-msvc"
             exe: "windows.exe"
@@ -81,16 +78,21 @@ jobs:
           ${{ env.CARGO }} build --target ${{ matrix.job.target }} --locked --release
           rm target/${{ matrix.job.target }}/release/gret.d
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp target/${{ matrix.job.target }}/release/gret.exe gret-${{ matrix.job.exe }}
+            cp target/${{ matrix.job.target }}/release/gret.exe gret-${{ matrix.job.target }}.exe
+            bin = gret-${{ matrix.job.target }}.exe
           else
-            cp target/${{ matrix.job.target }}/release/gret gret-${{ matrix.job.exe }}
+            cp target/${{ matrix.job.target }}/release/gret gret-${{ matrix.job.target }}
+            bin = gret-${{ matrix.job.target }}
           fi
+          echo "BIN=$bin" >> $GITHUB_ENV
 
       - name: Upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
+          tar czf "$BIN".tar.gz "$BIN"
           version="${{ needs.create-release.outputs.version }}"
-          gh release upload "$version" gret-${{ matrix.job.exe }}
+          gh release upload "$version" "$BIN".tar.gz
+
 
