@@ -34,6 +34,7 @@ jobs:
   release:
     name: build release
     needs: ['create-release']
+    runs-on: ${{ matrix.job.os }}
     env:
       CARGO: cargo
     strategy:
@@ -45,13 +46,13 @@ jobs:
             os: "ubuntu-latest"
           - target: "aarch64-unknown-linux-musl"
             exe: "aarch64-linux"
+            os: "ubuntu-latest"
           - target: "x86_64-apple-darwin"
             exe: "amd64-macos"
             os: "macos-latest"
           - target: "x86_64-pc-windows-msvc"
             exe: "windows.exe"
             os: "windows-latest"
-    runs-on: ${{ matrix.job.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
