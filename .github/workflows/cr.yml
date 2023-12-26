@@ -79,10 +79,10 @@ jobs:
           rm target/${{ matrix.job.target }}/release/gret.d
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             cp target/${{ matrix.job.target }}/release/gret.exe gret-${{ matrix.job.target }}.exe
-            bin = gret-${{ matrix.job.target }}.exe
+            bin=gret-${{ matrix.job.target }}.exe
           else
             cp target/${{ matrix.job.target }}/release/gret gret-${{ matrix.job.target }}
-            bin = gret-${{ matrix.job.target }}
+            bin=gret-${{ matrix.job.target }}
           fi
           echo "BIN=$bin" >> $GITHUB_ENV
 
