@@ -84,6 +84,7 @@ jobs:
             cp target/${{ matrix.job.target }}/release/gret.exe gret-${{ matrix.job.exe }}
           else
             cp target/${{ matrix.job.target }}/release/gret gret-${{ matrix.job.exe }}
+          fi
 
       - name: Upload
         env:
