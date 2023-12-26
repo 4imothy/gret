@@ -46,7 +46,7 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: "--release --target=${{ matrix.job.target }} --locked",
+          args: --release --target=${{ matrix.job.target }} --locked
 
       - name: Rename result
         run: |
@@ -55,7 +55,7 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, "refs/tags/")
         with:
           files: target/release/gret-${{ matrix.job.exe }}
         env:
