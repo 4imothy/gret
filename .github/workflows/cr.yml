@@ -30,6 +30,7 @@ jobs:
         run: gh release create $VERSION --draft --verify-tag --title $VERSION
     outputs:
       version: ${{ env.VERSION }}
+
   release:
     name: build release
     needs: ['create-release']
@@ -60,32 +61,32 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.job.target }}
 
-    - name: Use Cross
-      if: matrix.os == 'ubuntu-latest' && matrix.target != ''
-      shell: bash
-      run: |
-        dir="$RUNNER_TEMP/cross-download"
-        mkdir "$dir"
-        echo "$dir" >> $GITHUB_PATH
-        cd "$dir"
-        curl -LO "https://github.com/cross-rs/cross/releases/download/$CROSS_VERSION/cross-x86_64-unknown-linux-musl.tar.gz"
-        tar xf cross-x86_64-unknown-linux-musl.tar.gz
-        echo "CARGO=cross" >> $GITHUB_ENV
+      - name: Use Cross
+        if: matrix.os == 'ubuntu-latest' && matrix.target != ''
+        shell: bash
+        run: |
+          dir="$RUNNER_TEMP/cross-download"
+          mkdir "$dir"
+          echo "$dir" >> $GITHUB_PATH
+          cd "$dir"
+          curl -LO "https://github.com/cross-rs/cross/releases/download/$CROSS_VERSION/cross-x86_64-unknown-linux-musl.tar.gz"
+          tar xf cross-x86_64-unknown-linux-musl.tar.gz
+          echo "CARGO=cross" >> $GITHUB_ENV
 
-    - name: Build binary
-      shell: bash
-      run: |
-        ${{ env.CARGO }} build --target ${{ matrix.target }} --locked --release
-        rm target/${{ matrix.job.target }}/release/gret.d\n\
-        cp target/${{ matrix.job.target }}/release/gret* gret-${{ matrix.job.exe }}
-        bin="target/${{ matrix.target }}/release/gret-${{ matrix.job-exe }}"
-        echo "BIN=$bin" >> $GITHUB_ENV
+      - name: Build binary
+        shell: bash
+        run: |
+          ${{ env.CARGO }} build --target ${{ matrix.target }} --locked --release
+          rm target/${{ matrix.job.target }}/release/gret.d
+          cp target/${{ matrix.job.target }}/release/gret* gret-${{ matrix.job.exe }}
+          bin="target/${{ matrix.target }}/release/gret-${{ matrix.job-exe }}"
+          echo "BIN=$bin" >> $GITHUB_ENV
 
-    - name: Upload
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      shell: bash
-      run: |
-        version="${{ needs.create-release.outputs.version }}"
-        gh release upload "$version" ${{ env.BIN }}
+      - name: Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          version="${{ needs.create-release.outputs.version }}"
+          gh release upload "$version" ${{ env.BIN }}
 
