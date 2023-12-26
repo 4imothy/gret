@@ -80,7 +80,10 @@ jobs:
         run: |
           ${{ env.CARGO }} build --target ${{ matrix.job.target }} --locked --release
           rm target/${{ matrix.job.target }}/release/gret.d
-          cp target/${{ matrix.job.target }}/release/gret* gret-${{ matrix.job.exe }}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp target/${{ matrix.job.target }}/release/gret.exe gret-${{ matrix.job.exe }}
+          else
+            cp target/${{ matrix.job.target }}/release/gret gret-${{ matrix.job.exe }}
 
       - name: Upload
         env:
