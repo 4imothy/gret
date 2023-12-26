@@ -55,4 +55,4 @@ _gret() {
     esac
 }
 
-complete -F _gret -o bashdefault -o default gret
+complete -F _gret -o nosort -o bashdefault -o default gret
