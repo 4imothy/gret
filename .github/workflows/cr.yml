@@ -43,11 +43,6 @@ jobs:
           target: ${{ matrix.job.target }}
           components: "rust-src"
 
-      - uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          args: "--release --target=${{ matrix.job.target }} --locked"
-          command: "build"
       - name: Build
         run: cargo build --release --target=${{ matrix.job.target }} --locked
 
