@@ -12,6 +12,12 @@ readme = "README.md"
 description = "gret is a command line tool to search for patterns and show matches in a tree structure"
 documentation = "https://github.com/4imothy/gret/blob/main/options.md"
 authors = ["Timothy Cronin"]
+exclude = [
+  "/.github/",
+  "/bench/",
+  "/resources/",
+  "/example/",
+]
 
 [[bin]]
 path = "src/main.rs"

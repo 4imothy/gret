@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: CC-BY-4.0
 
+// TODO put apple developer certificate so downloads from releases can be done
 // TODO put the line in the Selected struct around an os check
 // TODO change the hidden option to still not searh .git directory i think or make that a seperate
 // option, --hidden or -h to show . and -a or --all to search all files
