@@ -1,3 +1,9 @@
+# NOTICE OF ARCHIVAL
+
+*gret* is replaced by [treegrep](https://github.com/4imothy/treegrep)
+
+Treegrep can act as a pattern matcher on its own or parse output from [ripgrep](https://github.com/BurntSushi/ripgrep) which leads to much better performance.
+
 ### gret
 
 gret (Global Regular Expression Tree) is a command-line utility
